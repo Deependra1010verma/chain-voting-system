@@ -88,7 +88,7 @@ const DashboardPage: React.FC = () => {
                             <span className="text-gray-400">Difficulty</span>
                             <span className="font-mono">2</span>
                         </div>
-                        <Link to="/results">
+                        <Link to="/audit">
                             <Button variant="secondary" className="w-full mt-2 text-sm">Audit Chain</Button>
                         </Link>
                     </div>

@@ -8,6 +8,8 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import VotePage from './pages/VotePage';
 import ResultsPage from './pages/ResultsPage';
+import AdminPage from './pages/AdminPage';
+import AuditPage from './pages/AuditPage';
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/vote" element={<VotePage />} />
             <Route path="/results" element={<ResultsPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/audit" element={<AuditPage />} />
           </Routes>
         </Layout>
       </Router>
