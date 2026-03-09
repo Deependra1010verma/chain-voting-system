@@ -22,12 +22,14 @@ import voteRoutes from './routes/voteRoutes';
 import candidateRoutes from './routes/candidateRoutes';
 import settingsRoutes from './routes/settingsRoutes';
 import auditRoutes from './routes/auditRoutes';
+import publicRoutes from './routes/publicRoutes';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/vote', voteRoutes);
 app.use('/api/candidates', candidateRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/public', publicRoutes);
 
 app.get('/', (req: Request, res: Response) => {
     res.json({

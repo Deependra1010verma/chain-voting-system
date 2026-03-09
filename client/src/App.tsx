@@ -11,6 +11,7 @@ import ResultsPage from './pages/ResultsPage';
 import AdminPage from './pages/AdminPage';
 import AuditPage from './pages/AuditPage';
 import CandidateRegistrationPage from './pages/CandidateRegistrationPage';
+import PublicDashboardPage from './pages/PublicDashboardPage';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/transparency" element={<PublicDashboardPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />

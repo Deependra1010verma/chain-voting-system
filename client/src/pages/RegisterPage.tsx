@@ -66,7 +66,7 @@ const RegisterPage: React.FC = () => {
                         label="Username"
                         name="username"
                         type="text"
-                        placeholder="johndoe"
+                        placeholder="Full Name"
                         value={formData.username}
                         onChange={handleChange}
                         required
