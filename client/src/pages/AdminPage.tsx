@@ -4,7 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import { Trash2, Edit2, Plus, Users } from 'lucide-react';
+import { Trash2, Edit2, Plus, Users, Settings, BarChart2 } from 'lucide-react';
+import SettingsTab from '../components/SettingsTab';
+import AnalyticsTab from '../components/AnalyticsTab';
 
 interface Candidate {
     _id: string;
@@ -20,6 +22,7 @@ const AdminPage: React.FC = () => {
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
+    const [activeTab, setActiveTab] = useState<'settings' | 'candidates' | 'analytics'>('settings');
     
     // Form State
     const [isEditing, setIsEditing] = useState(false);
@@ -128,13 +131,37 @@ const AdminPage: React.FC = () => {
                         <Users className="text-blue-500" />
                         Admin Dashboard
                     </h1>
-                    <p className="text-gray-400 mt-2">Manage election candidates securely.</p>
+                    <p className="text-gray-400 mt-2">Manage election details, candidates, and view results securely.</p>
                 </div>
             </header>
 
-            <div className="grid lg:grid-cols-3 gap-8">
-                {/* Form Section */}
-                <Card className="lg:col-span-1 h-fit sticky top-24">
+            <div className="flex space-x-2 border-b border-gray-800 pb-px mb-6">
+                <button 
+                    onClick={() => setActiveTab('settings')}
+                    className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 ${activeTab === 'settings' ? 'border-blue-500 text-blue-500 bg-blue-500/5' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                >
+                    <Settings size={18} /> Election Details
+                </button>
+                <button 
+                    onClick={() => setActiveTab('candidates')}
+                    className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 ${activeTab === 'candidates' ? 'border-blue-500 text-blue-500 bg-blue-500/5' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                >
+                    <Users size={18} /> Candidates
+                </button>
+                <button 
+                    onClick={() => setActiveTab('analytics')}
+                    className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 ${activeTab === 'analytics' ? 'border-blue-500 text-blue-500 bg-blue-500/5' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                >
+                    <BarChart2 size={18} /> Analytics & Export
+                </button>
+            </div>
+
+            {activeTab === 'settings' && <SettingsTab />}
+            {activeTab === 'analytics' && <AnalyticsTab />}
+            {activeTab === 'candidates' && (
+                <div className="grid lg:grid-cols-3 gap-8">
+                    {/* Form Section */}
+                    <Card className="lg:col-span-1 h-fit sticky top-24">
                     <h2 className="text-xl font-bold mb-6 border-b border-gray-700 pb-2">
                         {isEditing ? 'Edit Candidate' : 'Add New Candidate'}
                     </h2>
@@ -242,7 +269,8 @@ const AdminPage: React.FC = () => {
                         </div>
                     )}
                 </Card>
-            </div>
+                </div>
+            )}
         </div>
     );
 };

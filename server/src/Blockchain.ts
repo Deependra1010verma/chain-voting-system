@@ -1,5 +1,5 @@
 import { Block } from './Block';
-import { Vote } from './types';
+import { Transaction } from './types';
 
 export class Blockchain {
     public chain: Block[];
@@ -11,23 +11,23 @@ export class Blockchain {
     }
 
     private createGenesisBlock(): Block {
-        const genesisVote: Vote = {
-            voterId: 'Genesis',
-            candidate: 'None',
+        const genesisTransaction: Transaction = {
+            type: 'ADMIN_ACTION',
+            data: { message: 'Genesis Block Created' },
             timestamp: Date.now()
         };
-        return new Block(0, Date.now(), genesisVote, '0');
+        return new Block(0, Date.now(), genesisTransaction, '0');
     }
 
     public getLatestBlock(): Block {
         return this.chain[this.chain.length - 1];
     }
 
-    public addVote(vote: Vote): void {
+    public addTransaction(transaction: Transaction): void {
         const newBlock = new Block(
             this.chain.length,
             Date.now(),
-            vote,
+            transaction,
             this.getLatestBlock().hash
         );
 
@@ -54,8 +54,11 @@ export class Blockchain {
         return true;
     }
 
-    public getVotes(): Vote[] {
-        // Skip genesis block
-        return this.chain.slice(1).map(block => block.vote);
+    // Still necessary for vote counting, so we filter by VOTE type
+    public getVotes(): Transaction[] {
+        return this.chain
+            .slice(1)
+            .map(block => block.transaction)
+            .filter(tx => tx.type === 'VOTE');
     }
 }

@@ -6,6 +6,7 @@ export interface ICandidate extends Document {
     position: string;
     image: string;
     voteCount: number;
+    userId?: mongoose.Types.ObjectId;
 }
 
 const CandidateSchema: Schema = new Schema({
@@ -28,6 +29,13 @@ const CandidateSchema: Schema = new Schema({
     voteCount: {
         type: Number,
         default: 0
+    },
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: false, // Make it optional to not break existing admin-added candidates initially
+        unique: true,
+        sparse: true // Allows multiple null values for admin-created candidates without userIds
     }
 }, {
     timestamps: true

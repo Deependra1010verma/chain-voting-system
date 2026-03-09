@@ -7,6 +7,22 @@ import { User, Shield, CheckCircle, XCircle } from 'lucide-react';
 
 const DashboardPage: React.FC = () => {
     const { user } = useAuth();
+    const [electionData, setElectionData] = React.useState<any>(null);
+
+    React.useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await fetch('http://localhost:5000/api/settings');
+                if (res.ok) {
+                    const data = await res.json();
+                    setElectionData(data);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     if (!user) {
         return <div className="text-center mt-20">Please log in to view dashboard.</div>;
@@ -61,11 +77,15 @@ const DashboardPage: React.FC = () => {
                                     <span className="text-2xl font-bold">Not Voted</span>
                                 </div>
                                 <p className="text-center text-gray-400">
-                                    Election is live. Cast your vote securely now.
+                                    {electionData?.isActive 
+                                        ? `${electionData?.electionName || 'Election'} is live. Cast your vote securely now.` 
+                                        : 'Voting is currently closed.'}
                                 </p>
-                                <Link to="/vote" className="w-full">
-                                    <Button className="w-full">Vote Now</Button>
-                                </Link>
+                                {electionData?.isActive && (
+                                    <Link to="/vote" className="w-full">
+                                        <Button className="w-full">Vote Now</Button>
+                                    </Link>
+                                )}
                             </>
                         )}
                     </div>
@@ -90,6 +110,23 @@ const DashboardPage: React.FC = () => {
                         </div>
                         <Link to="/audit">
                             <Button variant="secondary" className="w-full mt-2 text-sm">Audit Chain</Button>
+                        </Link>
+                    </div>
+                </Card>
+                <Card title="Candidate Portal" className="relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <User size={100} />
+                    </div>
+                    <div className="flex flex-col items-center justify-center h-full space-y-4 relative z-10">
+                        <div className="text-blue-500 flex items-center space-x-2">
+                            <Shield size={32} />
+                            <span className="text-2xl font-bold">Stand in Election</span>
+                        </div>
+                        <p className="text-center text-gray-400">
+                            Apply to be a candidate for the upcoming election.
+                        </p>
+                        <Link to="/candidate-register" className="w-full">
+                            <Button className="w-full" variant="primary">Register as Candidate</Button>
                         </Link>
                     </div>
                 </Card>

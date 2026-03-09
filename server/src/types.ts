@@ -1,5 +1,5 @@
-export interface Vote {
-    voterId: string;
-    candidate: string;
+export interface Transaction {
+    type: 'VOTE' | 'REGISTRATION' | 'ADMIN_ACTION';
+    data: any;
     timestamp: number;
 }

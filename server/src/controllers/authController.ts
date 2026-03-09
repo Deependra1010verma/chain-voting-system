@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User, { IUser } from '../models/User';
+import AuditLog from '../models/AuditLog';
+import { blockchain } from '../blockchainInstance';
 
 const generateToken = (id: string, isAdmin: boolean) => {
     return jwt.sign({ id, isAdmin }, process.env.JWT_SECRET || 'secret', {
@@ -30,6 +32,19 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
         });
 
         if (user) {
+            // Log Registration
+            await AuditLog.create({
+                action: 'REGISTRATION',
+                details: { username, email },
+                userId: user.id
+            });
+
+            blockchain.addTransaction({
+                type: 'REGISTRATION',
+                data: { userId: user.id, username, email },
+                timestamp: Date.now()
+            });
+
             res.status(201).json({
                 _id: user.id,
                 username: user.username,

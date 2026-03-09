@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Shield } from 'lucide-react';
 
 interface Candidate {
     _id: string;
@@ -20,16 +20,26 @@ const VotePage: React.FC = () => {
     const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [electionData, setElectionData] = useState<any>(null);
 
     useEffect(() => {
         const fetchCandidates = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/candidates');
-                if (!response.ok) {
+                const [candidatesRes, settingsRes] = await Promise.all([
+                    fetch('http://localhost:5000/api/candidates'),
+                    fetch('http://localhost:5000/api/settings')
+                ]);
+
+                if (!candidatesRes.ok) {
                     throw new Error('Failed to fetch candidates');
                 }
-                const data = await response.json();
+                const data = await candidatesRes.json();
                 setCandidates(data);
+                
+                if (settingsRes.ok) {
+                    const settings = await settingsRes.json();
+                    setElectionData(settings);
+                }
             } catch (err) {
                 console.error("Error fetching candidates:", err);
                 setError('Failed to load candidates. Please try again later.');
@@ -50,6 +60,17 @@ const VotePage: React.FC = () => {
                 <h2 className="text-3xl font-bold">You have already voted!</h2>
                 <p className="text-gray-400">Your vote is securely recorded on the blockchain.</p>
                 <Button onClick={() => navigate('/results')}>View Results</Button>
+            </div>
+        );
+    }
+
+    if (electionData && !electionData.isActive) {
+        return (
+            <div className="text-center mt-20 space-y-4">
+                <Shield size={64} className="mx-auto text-yellow-500" />
+                <h2 className="text-3xl font-bold">Voting is Closed</h2>
+                <p className="text-gray-400">The election is currently not active.</p>
+                <Button onClick={() => navigate('/dashboard')}>Go Back</Button>
             </div>
         );
     }

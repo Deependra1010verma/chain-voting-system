@@ -1,18 +1,18 @@
 import crypto from 'crypto';
-import { Vote } from './types';
+import { Transaction } from './types';
 
 export class Block {
     public index: number;
     public timestamp: number;
-    public vote: Vote; // In a real blockchain, this would be an array of transactions, but for voting, one vote per block is simple/fine.
+    public transaction: Transaction; // Now represents a generic action (Vote, Registration, Admin Action)
     public previousHash: string;
     public hash: string;
     public nonce: number;
 
-    constructor(index: number, timestamp: number, vote: Vote, previousHash: string = '') {
+    constructor(index: number, timestamp: number, transaction: Transaction, previousHash: string = '') {
         this.index = index;
         this.timestamp = timestamp;
-        this.vote = vote;
+        this.transaction = transaction;
         this.previousHash = previousHash;
         this.hash = this.calculateHash();
         this.nonce = 0;
@@ -25,7 +25,7 @@ export class Block {
                 this.index +
                 this.previousHash +
                 this.timestamp +
-                JSON.stringify(this.vote) +
+                JSON.stringify(this.transaction) +
                 this.nonce
             )
             .digest('hex');

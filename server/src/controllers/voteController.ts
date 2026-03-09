@@ -2,7 +2,9 @@ import { Request, Response } from 'express';
 import { blockchain } from '../blockchainInstance';
 import User from '../models/User';
 import Candidate from '../models/Candidate';
-import { Vote } from '../types';
+import Settings from '../models/Settings';
+import AuditLog from '../models/AuditLog';
+import { Transaction } from '../types';
 
 interface AuthRequest extends Request {
     user?: any;
@@ -24,6 +26,12 @@ export const castVote = async (req: AuthRequest, res: Response): Promise<void> =
             return;
         }
 
+        const settings = await Settings.findOne();
+        if (settings && !settings.isActive) {
+            res.status(400).json({ message: 'Voting is currently closed.' });
+            return;
+        }
+
         if (user.hasVoted) {
             res.status(400).json({ message: 'User has already voted' });
             return;
@@ -35,13 +43,19 @@ export const castVote = async (req: AuthRequest, res: Response): Promise<void> =
             return;
         }
 
-        const newVote: Vote = {
-            voterId: user.id,
-            candidate: candidateId,
+        const newTransaction: Transaction = {
+            type: 'VOTE',
+            data: { voterId: user.id, candidate: candidateId },
             timestamp: Date.now(),
         };
 
-        blockchain.addVote(newVote);
+        blockchain.addTransaction(newTransaction);
+
+        await AuditLog.create({
+            action: 'VOTE',
+            details: { candidateId },
+            userId: user.id
+        });
 
         user.hasVoted = true;
         await user.save();
@@ -56,14 +70,15 @@ export const castVote = async (req: AuthRequest, res: Response): Promise<void> =
 };
 
 export const getResults = (req: Request, res: Response): void => {
-    const votes = blockchain.getVotes();
+    const transactions = blockchain.getVotes();
     const results: { [key: string]: number } = {};
 
-    votes.forEach((vote) => {
-        if (results[vote.candidate]) {
-            results[vote.candidate]++;
+    transactions.forEach((tx) => {
+        const candidate = tx.data.candidate;
+        if (results[candidate]) {
+            results[candidate]++;
         } else {
-            results[vote.candidate] = 1;
+            results[candidate] = 1;
         }
     });
 

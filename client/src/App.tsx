@@ -10,6 +10,7 @@ import VotePage from './pages/VotePage';
 import ResultsPage from './pages/ResultsPage';
 import AdminPage from './pages/AdminPage';
 import AuditPage from './pages/AuditPage';
+import CandidateRegistrationPage from './pages/CandidateRegistrationPage';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
             <Route path="/results" element={<ResultsPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/audit" element={<AuditPage />} />
+            <Route path="/candidate-register" element={<CandidateRegistrationPage />} />
           </Routes>
         </Layout>
       </Router>
