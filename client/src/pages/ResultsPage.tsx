@@ -6,14 +6,16 @@ interface VoteResult {
     [candidate: string]: number;
 }
 
+interface Transaction {
+    type: 'VOTE' | 'REGISTRATION' | 'ADMIN_ACTION';
+    data: any;
+    timestamp: number;
+}
+
 interface Block {
     index: number;
     timestamp: number;
-    vote: {
-        voterId: string;
-        candidate: string;
-        timestamp: number;
-    };
+    transaction: Transaction;
     previousHash: string;
     hash: string;
     nonce: number;
@@ -105,11 +107,12 @@ const ResultsPage: React.FC = () => {
                                             <span className="text-gray-500">Prev Hash:</span>
                                             <span className="text-gray-400">{block.previousHash ? block.previousHash.substring(0, 20) + '...' : 'Genesis'}</span>
 
-                                            {block.index > 0 && (
+                                            {block.index > 0 && block.transaction && (
                                                 <>
-                                                    <span className="text-gray-500">Vote:</span>
-                                                    <span className="text-yellow-500">
-                                                        {block.vote.candidate} (Voter: {block.vote.voterId.substring(0, 8)}...)
+                                                    <span className="text-gray-500">Action:</span>
+                                                    <span className={block.transaction.type === 'VOTE' ? "text-green-500" : "text-yellow-500"}>
+                                                        {block.transaction.type}
+                                                        {block.transaction.type === 'VOTE' && block.transaction.data.candidate && ` (${block.transaction.data.candidate})`}
                                                     </span>
                                                 </>
                                             )}

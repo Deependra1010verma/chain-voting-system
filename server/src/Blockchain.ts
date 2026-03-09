@@ -42,7 +42,11 @@ export class Blockchain {
             const previousBlock = this.chain[i - 1];
 
             if (currentBlock.hash !== currentBlock.calculateHash()) {
-                console.error('Hash invalid', currentBlock);
+                console.error('Hash invalid for block', currentBlock.index);
+                console.error('Expected:', currentBlock.hash);
+                console.error('Calculated:', currentBlock.calculateHash());
+                console.error('Transaction Object:', currentBlock.transaction);
+                console.error('Transaction Stringified:', JSON.stringify(currentBlock.transaction));
                 return false;
             }
 
