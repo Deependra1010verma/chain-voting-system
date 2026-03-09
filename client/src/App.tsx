@@ -1,0 +1,31 @@
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import Layout from './components/Layout';
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+
+import DashboardPage from './pages/DashboardPage';
+import VotePage from './pages/VotePage';
+import ResultsPage from './pages/ResultsPage';
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/vote" element={<VotePage />} />
+            <Route path="/results" element={<ResultsPage />} />
+          </Routes>
+        </Layout>
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;
