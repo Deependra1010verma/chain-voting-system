@@ -3,6 +3,7 @@ import Card from './Card';
 import Button from './Button';
 import Input from './Input';
 import { useAuth } from '../context/AuthContext';
+import API_URL from '../config';
 
 const SettingsTab: React.FC = () => {
     const { user } = useAuth();
@@ -22,7 +23,7 @@ const SettingsTab: React.FC = () => {
 
     const fetchSettings = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/settings');
+            const res = await fetch(`${API_URL}/api/settings`);
             if (res.ok) {
                 const data = await res.json();
                 setSettings({
@@ -44,7 +45,7 @@ const SettingsTab: React.FC = () => {
         setSaving(true);
         setMessage('');
         try {
-            const res = await fetch('http://localhost:5000/api/settings', {
+            const res = await fetch(`${API_URL}/api/settings`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

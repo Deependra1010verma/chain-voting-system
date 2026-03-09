@@ -7,6 +7,7 @@ import Input from '../components/Input';
 import { Trash2, Edit2, Plus, Users, Settings, BarChart2 } from 'lucide-react';
 import SettingsTab from '../components/SettingsTab';
 import AnalyticsTab from '../components/AnalyticsTab';
+import API_URL from '../config';
 
 interface Candidate {
     _id: string;
@@ -36,7 +37,7 @@ const AdminPage: React.FC = () => {
 
     const fetchCandidates = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/candidates');
+            const response = await fetch(`${API_URL}/api/candidates`);
             if (!response.ok) throw new Error('Failed to fetch candidates');
             const data = await response.json();
             setCandidates(data);
@@ -81,7 +82,7 @@ const AdminPage: React.FC = () => {
         if (!window.confirm('Are you sure you want to delete this candidate?')) return;
         
         try {
-            const response = await fetch(`http://localhost:5000/api/candidates/${id}`, {
+            const response = await fetch(`${API_URL}/api/candidates/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${user.token}`
@@ -100,8 +101,8 @@ const AdminPage: React.FC = () => {
         
         try {
             const url = isEditing 
-                ? `http://localhost:5000/api/candidates/${editId}` 
-                : 'http://localhost:5000/api/candidates';
+                ? `${API_URL}/api/candidates/${editId}` 
+                : `${API_URL}/api/candidates`;
                 
             const method = isEditing ? 'PUT' : 'POST';
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import API_URL from '../config';
 
 const CandidateRegistrationPage: React.FC = () => {
     const { user } = useAuth();
@@ -34,9 +35,9 @@ const CandidateRegistrationPage: React.FC = () => {
         setLoading(true);
 
         try {
-            const token = localStorage.getItem('token');
+            const token = user.token;
 
-            const response = await fetch('http://localhost:5000/api/candidates/register', {
+            const response = await fetch(`${API_URL}/api/candidates/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

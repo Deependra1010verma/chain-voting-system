@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Card from '../components/Card';
 import { Shield, Database } from 'lucide-react';
+import API_URL from '../config';
 
 interface VoteResult {
     [candidate: string]: number;
@@ -30,8 +31,8 @@ const ResultsPage: React.FC = () => {
         const fetchData = async () => {
             try {
                 const [resultsRes, chainRes] = await Promise.all([
-                    fetch('http://localhost:5000/api/vote/results'),
-                    fetch('http://localhost:5000/api/vote/chain')
+                    fetch(`${API_URL}/api/vote/results`),
+                    fetch(`${API_URL}/api/vote/chain`)
                 ]);
 
                 if (resultsRes.ok) setResults(await resultsRes.json());

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { User, Shield, CheckCircle, XCircle } from 'lucide-react';
+import API_URL from '../config';
 
 const DashboardPage: React.FC = () => {
     const { user } = useAuth();
@@ -12,7 +13,7 @@ const DashboardPage: React.FC = () => {
     React.useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const res = await fetch('http://localhost:5000/api/settings');
+                const res = await fetch(`${API_URL}/api/settings`);
                 if (res.ok) {
                     const data = await res.json();
                     setElectionData(data);

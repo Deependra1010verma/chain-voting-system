@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { CheckCircle, Shield } from 'lucide-react';
+import API_URL from '../config';
 
 interface Candidate {
     _id: string;
@@ -26,8 +27,8 @@ const VotePage: React.FC = () => {
         const fetchCandidates = async () => {
             try {
                 const [candidatesRes, settingsRes] = await Promise.all([
-                    fetch('http://localhost:5000/api/candidates'),
-                    fetch('http://localhost:5000/api/settings')
+                    fetch(`${API_URL}/api/candidates`),
+                    fetch(`${API_URL}/api/settings`)
                 ]);
 
                 if (!candidatesRes.ok) {
@@ -83,7 +84,7 @@ const VotePage: React.FC = () => {
 
         try {
             const token = user.token; // Assuming user object has token
-            const response = await fetch('http://localhost:5000/api/vote/vote', {
+            const response = await fetch(`${API_URL}/api/vote/vote`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

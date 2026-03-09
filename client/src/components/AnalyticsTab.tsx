@@ -3,6 +3,7 @@ import Card from './Card';
 import Button from './Button';
 import { useAuth } from '../context/AuthContext';
 import { Download, PieChart, Users } from 'lucide-react';
+import API_URL from '../config';
 
 interface AnalyticsData {
     totalUsers: number;
@@ -31,10 +32,10 @@ const AnalyticsTab: React.FC = () => {
     const fetchData = async () => {
         try {
             const [analyticsRes, candidatesRes] = await Promise.all([
-                fetch('http://localhost:5000/api/settings/analytics', {
+                fetch(`${API_URL}/api/settings/analytics`, {
                     headers: { Authorization: `Bearer ${user?.token}` }
                 }),
-                fetch('http://localhost:5000/api/candidates')
+                fetch(`${API_URL}/api/candidates`)
             ]);
 
             if (analyticsRes.ok && candidatesRes.ok) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Users, Vote, Link, CheckCircle } from 'lucide-react';
 import Card from '../components/Card';
+import API_URL from '../config';
 
 interface PublicStats {
     election: {
@@ -38,7 +39,7 @@ const PublicDashboardPage: React.FC = () => {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/public/stats');
+                const response = await fetch(`${API_URL}/api/public/stats`);
                 if (!response.ok) throw new Error('Failed to fetch public stats');
                 const result = await response.json();
                 setData(result);
