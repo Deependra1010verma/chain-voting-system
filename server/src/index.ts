@@ -22,18 +22,18 @@ app.use((err: any, req: Request, res: Response, next: any) => {
     });
 });
 
-let isDbConnected = false;
+import mongoose from 'mongoose';
 
 // Middleware to ensure DB connection
 const ensureDbConnection = async (req: Request, res: Response, next: any) => {
-    if (isDbConnected) {
+    // 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+    if (mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2) {
         return next();
     }
     
     try {
         console.log('[server]: Connecting to Database lazily...');
         await connectDB();
-        isDbConnected = true;
         next();
     } catch (err) {
         console.error('[server lazy db connection error]:', err);
@@ -70,7 +70,6 @@ if (process.env.NODE_ENV !== 'production') {
         // Locally, we can try to connect immediately, but it won't crash the server if it fails
         try {
             await connectDB();
-            isDbConnected = true;
         } catch (err) {
             console.error('[server startup db connection error]: Database not connected yet.');
         }
