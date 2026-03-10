@@ -32,7 +32,7 @@ const VotePage: React.FC = () => {
                 ]);
 
                 if (!candidatesRes.ok) {
-                    throw new Error('Failed to fetch candidates');
+                    throw new Error(`Failed to fetch candidates: ${candidatesRes.status}`);
                 }
                 const data = await candidatesRes.json();
                 setCandidates(data);
@@ -93,11 +93,12 @@ const VotePage: React.FC = () => {
                 body: JSON.stringify({ candidate: selectedCandidate }),
             });
 
-            const data = await response.json();
-
             if (!response.ok) {
-                throw new Error(data.message || 'Voting failed');
+                throw new Error(`Voting failed: ${response.status} (Check Vercel Logs)`);
             }
+
+            // @ts-ignore
+            const data = await response.json();
 
             // Update user state locally
             const updatedUser = { ...user, hasVoted: true };

@@ -13,8 +13,39 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Database
-connectDB();
+// Global Error Handler
+app.use((err: any, req: Request, res: Response, next: any) => {
+    console.error('[server error]:', err);
+    res.status(500).json({
+        message: 'Internal Server Error',
+        error: process.env.NODE_ENV !== 'production' ? err.message : undefined
+    });
+});
+
+let isDbConnected = false;
+
+// Middleware to ensure DB connection
+const ensureDbConnection = async (req: Request, res: Response, next: any) => {
+    if (isDbConnected) {
+        return next();
+    }
+    
+    try {
+        console.log('[server]: Connecting to Database lazily...');
+        await connectDB();
+        isDbConnected = true;
+        next();
+    } catch (err) {
+        console.error('[server lazy db connection error]:', err);
+        res.status(500).json({
+            message: 'Database connection failed. Likely missing Environment Variables on Vercel.',
+            error: process.env.NODE_ENV !== 'production' && err instanceof Error ? err.message : undefined
+        });
+    }
+};
+
+// Apply the DB connection check to all /api routes
+app.use('/api', ensureDbConnection);
 
 // Routes
 import authRoutes from './routes/authRoutes';
@@ -31,31 +62,20 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/public', publicRoutes);
 
-app.get('/', (req: Request, res: Response) => {
-    res.json({
-        message: 'Chain Voting API is running 🚀',
-        endpoints: {
-            auth: {
-                register: 'POST /api/auth/register',
-                login: 'POST /api/auth/login',
-                me: 'GET /api/auth/me'
-            },
-            candidates: {
-                list: 'GET /api/candidates',
-                create: 'POST /api/candidates (Admin)',
-                update: 'PUT /api/candidates/:id (Admin)',
-                delete: 'DELETE /api/candidates/:id (Admin)'
-            },
-            vote: {
-                chain: 'GET /api/vote/chain',
-                cast: 'POST /api/vote/vote',
-                results: 'GET /api/vote/results'
-            }
+
+// Start Server locally
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(port, async () => {
+        console.log(`[server]: Server is running at http://localhost:${port}`);
+        // Locally, we can try to connect immediately, but it won't crash the server if it fails
+        try {
+            await connectDB();
+            isDbConnected = true;
+        } catch (err) {
+            console.error('[server startup db connection error]: Database not connected yet.');
         }
     });
-});
+}
 
-// Start Server
-app.listen(port, () => {
-    console.log(`[server]: Server is running at http://localhost:${port}`);
-});
+// Export for Vercel
+export default app;

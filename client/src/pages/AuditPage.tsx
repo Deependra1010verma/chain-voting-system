@@ -45,7 +45,9 @@ const AuditPage: React.FC = () => {
                         Authorization: `Bearer ${token}`
                     }
                 });
-                if (!response.ok) throw new Error('Failed to fetch audit data');
+                if (!response.ok) {
+                    throw new Error(`Audit fetch failed: ${response.status}`);
+                }
                 const data = await response.json();
                 setChain(data.blockchainLogs);
                 setDbLogs(data.databaseLogs);

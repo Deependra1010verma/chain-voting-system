@@ -35,8 +35,17 @@ const ResultsPage: React.FC = () => {
                     fetch(`${API_URL}/api/vote/chain`)
                 ]);
 
-                if (resultsRes.ok) setResults(await resultsRes.json());
-                if (chainRes.ok) setChain(await chainRes.json());
+                if (resultsRes.ok) {
+                    setResults(await resultsRes.json());
+                } else {
+                    console.error('Results fetch failed:', resultsRes.status);
+                }
+                
+                if (chainRes.ok) {
+                    setChain(await chainRes.json());
+                } else {
+                    console.error('Chain fetch failed:', chainRes.status);
+                }
             } catch (error) {
                 console.error('Error fetching data:', error);
             } finally {

@@ -10,10 +10,11 @@ const connectDB = async () => {
     } catch (error) {
         if (error instanceof Error) {
             console.error(`Error: ${error.message}`);
+            throw error; // Throw instead of exit
         } else {
             console.error('Unknown error connecting to MongoDB');
+            throw new Error('Database connection failed');
         }
-        process.exit(1);
     }
 };
 

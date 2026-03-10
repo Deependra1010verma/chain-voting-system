@@ -40,7 +40,9 @@ const PublicDashboardPage: React.FC = () => {
         const fetchStats = async () => {
             try {
                 const response = await fetch(`${API_URL}/api/public/stats`);
-                if (!response.ok) throw new Error('Failed to fetch public stats');
+                if (!response.ok) {
+                    throw new Error(`Public stats fetch failed: ${response.status}`);
+                }
                 const result = await response.json();
                 setData(result);
             } catch (err) {

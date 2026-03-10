@@ -56,7 +56,7 @@ const SettingsTab: React.FC = () => {
             if (res.ok) {
                 setMessage('Settings updated successfully!');
             } else {
-                setMessage('Failed to update settings.');
+                setMessage(`Failed to update settings: ${res.status}`);
             }
         } catch (err) {
             setMessage('Error connecting to server.');

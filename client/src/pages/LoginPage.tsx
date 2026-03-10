@@ -29,11 +29,17 @@ const LoginPage: React.FC = () => {
                 body: JSON.stringify(formData),
             });
 
-            const data = await response.json();
-
             if (!response.ok) {
-                throw new Error(data.message || 'Login failed');
+                const text = await response.text();
+                try {
+                    const errorData = JSON.parse(text);
+                    throw new Error(errorData.message || 'Login failed');
+                } catch (e) {
+                    throw new Error(`Server Error: ${response.status} (Likely missing Env Vars or Config)`);
+                }
             }
+            
+            const data = await response.json();
 
             login(data);
             navigate('/dashboard');

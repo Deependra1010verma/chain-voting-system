@@ -39,11 +39,17 @@ const RegisterPage: React.FC = () => {
                 }),
             });
 
-            const data = await response.json();
-
             if (!response.ok) {
-                throw new Error(data.message || 'Registration failed');
+                const text = await response.text();
+                try {
+                    const errorData = JSON.parse(text);
+                    throw new Error(errorData.message || 'Registration failed');
+                } catch (e) {
+                    throw new Error(`Server Error: ${response.status} (Check Vercel Logs)`);
+                }
             }
+
+            const data = await response.json();
 
             login(data);
             navigate('/dashboard');
