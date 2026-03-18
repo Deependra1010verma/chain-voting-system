@@ -1,11 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Card from '../components/Card';
-import { Shield, Database } from 'lucide-react';
+import { Shield, Database, Crown } from 'lucide-react';
 import API_URL from '../config';
-
-interface VoteResult {
-    [candidate: string]: number;
-}
 
 interface Transaction {
     type: 'VOTE' | 'REGISTRATION' | 'ADMIN_ACTION';
@@ -22,29 +18,45 @@ interface Block {
     nonce: number;
 }
 
+interface DeclaredResult {
+    declared: boolean;
+    declaredAt: string;
+    winner: {
+        _id: string;
+        name: string;
+        party: string;
+        position: string;
+        image: string;
+        voteCount: number;
+    };
+}
+
 const ResultsPage: React.FC = () => {
-    const [results, setResults] = useState<VoteResult>({});
     const [chain, setChain] = useState<Block[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [declaredResult, setDeclaredResult] = useState<DeclaredResult | null>(null);
+    const [candidatesStat, setCandidatesStat] = useState<{name: string, voteCount: number}[]>([]);
+    const [totalVotes, setTotalVotes] = useState(0);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [resultsRes, chainRes] = await Promise.all([
-                    fetch(`${API_URL}/api/vote/results`),
-                    fetch(`${API_URL}/api/vote/chain`)
+                const [chainRes, publicRes] = await Promise.all([
+                    fetch(`${API_URL}/api/vote/chain`),
+                    fetch(`${API_URL}/api/public/stats`)
                 ]);
 
-                if (resultsRes.ok) {
-                    setResults(await resultsRes.json());
-                } else {
-                    console.error('Results fetch failed:', resultsRes.status);
-                }
-                
                 if (chainRes.ok) {
                     setChain(await chainRes.json());
                 } else {
                     console.error('Chain fetch failed:', chainRes.status);
+                }
+
+                if (publicRes.ok) {
+                    const publicData = await publicRes.json();
+                    setDeclaredResult(publicData.declaredResult || null);
+                    setCandidatesStat(publicData.candidates || []);
+                    setTotalVotes(publicData.statistics?.totalVotes || 0);
                 }
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -59,33 +71,60 @@ const ResultsPage: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
-    const totalVotes = Object.values(results).reduce((a, b) => a + b, 0);
+    // Sort candidates by voteCount descending for display
+    const sortedCandidates = [...candidatesStat].sort((a, b) => b.voteCount - a.voteCount);
 
     return (
         <div className="space-y-12 animate-fade-in-up">
             <header className="text-center space-y-2">
                 <h1 className="text-3xl font-bold">Election Results</h1>
-                <p className="text-gray-400">Live tally from the blockchain.</p>
+                <p className="text-gray-400">Live tally of the election.</p>
             </header>
 
+            {/* Official Declared Winner Banner */}
+            {declaredResult?.declared && (
+                <div className="mb-8">
+                    <div className="bg-gradient-to-r from-yellow-500/10 via-yellow-600/20 to-yellow-500/10 border-2 border-yellow-500 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 shadow-[0_0_30px_rgba(234,179,8,0.15)] relative overflow-hidden">
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                        <div className="absolute -top-10 -right-10 w-40 h-40 bg-yellow-500/20 blur-3xl rounded-full"></div>
+                        <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-yellow-600/20 blur-3xl rounded-full"></div>
+                        
+                        <div className="flex-shrink-0">
+                            <Crown size={56} className="text-yellow-400 drop-shadow-[0_0_20px_rgba(234,179,8,0.5)]" />
+                        </div>
+                        <div className="flex-1 text-center md:text-left z-10">
+                            <p className="text-yellow-400 font-semibold text-sm uppercase tracking-widest mb-1">✅ Official Result Declared</p>
+                            <h2 className="text-3xl font-extrabold text-white">{declaredResult.winner.name}</h2>
+                            <p className="text-gray-300 text-sm">{declaredResult.winner.party} — {declaredResult.winner.position} · {declaredResult.winner.voteCount} votes</p>
+                            <p className="text-gray-500 text-xs mt-1">Declared on {new Date(declaredResult.declaredAt).toLocaleString()}</p>
+                        </div>
+                        <img
+                            src={declaredResult.winner.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(declaredResult.winner.name)}&background=ca8a04&color=fff&size=128`}
+                            alt={declaredResult.winner.name}
+                            className="w-16 h-16 rounded-full border-4 border-yellow-500/50 object-cover flex-shrink-0 z-10"
+                        />
+                    </div>
+                </div>
+            )}
+
             {isLoading && !totalVotes ? (
-                <div className="text-center">Loading blockchain data...</div>
+                <div className="text-center text-gray-400">Loading election data...</div>
             ) : (
                 <div className="grid md:grid-cols-2 gap-8">
                     <Card title="Vote Tally" className="space-y-6">
-                        {Object.entries(results).length === 0 ? (
+                        {sortedCandidates.length === 0 ? (
                             <p className="text-gray-400 text-center py-8">No votes cast yet.</p>
                         ) : (
-                            Object.entries(results).map(([candidate, count]) => (
-                                <div key={candidate} className="space-y-2">
+                            sortedCandidates.map((c) => (
+                                <div key={c.name} className="space-y-2">
                                     <div className="flex justify-between text-sm">
-                                        <span className="font-semibold">{candidate}</span>
-                                        <span>{count} votes ({totalVotes > 0 ? ((count / totalVotes) * 100).toFixed(1) : 0}%)</span>
+                                        <span className="font-semibold">{c.name}</span>
+                                        <span>{c.voteCount} votes ({totalVotes > 0 ? ((c.voteCount / totalVotes) * 100).toFixed(1) : 0}%)</span>
                                     </div>
                                     <div className="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
                                         <div
                                             className="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out"
-                                            style={{ width: `${totalVotes > 0 ? (count / totalVotes) * 100 : 0}%` }}
+                                            style={{ width: `${totalVotes > 0 ? (c.voteCount / totalVotes) * 100 : 0}%` }}
                                         ></div>
                                     </div>
                                 </div>

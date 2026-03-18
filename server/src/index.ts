@@ -63,6 +63,8 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/public', publicRoutes);
 
 
+import { blockchain } from './blockchainInstance';
+
 // Start Server locally
 if (process.env.NODE_ENV !== 'production') {
     app.listen(port, async () => {
@@ -70,8 +72,9 @@ if (process.env.NODE_ENV !== 'production') {
         // Locally, we can try to connect immediately, but it won't crash the server if it fails
         try {
             await connectDB();
+            await blockchain.init();
         } catch (err) {
-            console.error('[server startup db connection error]: Database not connected yet.');
+            console.error('[server startup db connection/blockchain init error]:', err);
         }
     });
 }

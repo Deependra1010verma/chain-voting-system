@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import { Trash2, Edit2, Plus, Users, Settings, BarChart2 } from 'lucide-react';
+import { Trash2, Edit2, Plus, Users, Settings, BarChart2, Trophy, Crown, RotateCcw } from 'lucide-react';
 import SettingsTab from '../components/SettingsTab';
 import AnalyticsTab from '../components/AnalyticsTab';
 import API_URL from '../config';
@@ -18,13 +18,19 @@ interface Candidate {
     voteCount: number;
 }
 
+interface DeclaredResult {
+    declared: boolean;
+    declaredAt: string;
+    winner: Candidate;
+}
+
 const AdminPage: React.FC = () => {
     const { user } = useAuth();
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
-    const [activeTab, setActiveTab] = useState<'settings' | 'candidates' | 'analytics'>('settings');
-    
+    const [activeTab, setActiveTab] = useState<'settings' | 'candidates' | 'analytics' | 'results'>('settings');
+
     // Form State
     const [isEditing, setIsEditing] = useState(false);
     const [editId, setEditId] = useState<string | null>(null);
@@ -34,6 +40,11 @@ const AdminPage: React.FC = () => {
         position: '',
         image: ''
     });
+
+    // Results Tab State
+    const [declaredResult, setDeclaredResult] = useState<DeclaredResult | null>(null);
+    const [isDeclaring, setIsDeclaring] = useState(false);
+    const [resultMessage, setResultMessage] = useState('');
 
     const fetchCandidates = async () => {
         try {
@@ -48,8 +59,21 @@ const AdminPage: React.FC = () => {
         }
     };
 
+    const fetchDeclaredResult = async () => {
+        try {
+            const response = await fetch(`${API_URL}/api/public/stats`);
+            if (response.ok) {
+                const data = await response.json();
+                setDeclaredResult(data.declaredResult || null);
+            }
+        } catch (err) {
+            console.error('Failed to fetch declared result', err);
+        }
+    };
+
     useEffect(() => {
         fetchCandidates();
+        fetchDeclaredResult();
     }, []);
 
     // If not admin, redirect
@@ -80,7 +104,7 @@ const AdminPage: React.FC = () => {
 
     const handleDelete = async (id: string) => {
         if (!window.confirm('Are you sure you want to delete this candidate?')) return;
-        
+
         try {
             const response = await fetch(`${API_URL}/api/candidates/${id}`, {
                 method: 'DELETE',
@@ -88,7 +112,7 @@ const AdminPage: React.FC = () => {
                     'Authorization': `Bearer ${user.token}`
                 }
             });
-            
+
             if (!response.ok) throw new Error('Failed to delete candidate');
             fetchCandidates();
         } catch (err) {
@@ -98,12 +122,12 @@ const AdminPage: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         try {
-            const url = isEditing 
-                ? `${API_URL}/api/candidates/${editId}` 
+            const url = isEditing
+                ? `${API_URL}/api/candidates/${editId}`
                 : `${API_URL}/api/candidates`;
-                
+
             const method = isEditing ? 'PUT' : 'POST';
 
             const response = await fetch(url, {
@@ -116,13 +140,68 @@ const AdminPage: React.FC = () => {
             });
 
             if (!response.ok) throw new Error('Failed to save candidate');
-            
+
             resetForm();
             fetchCandidates();
         } catch (err) {
             alert(err instanceof Error ? err.message : 'Error saving candidate');
         }
     };
+
+    const handleDeclareWinner = async (candidateId: string, candidateName: string) => {
+        if (!window.confirm(`Are you sure you want to officially declare "${candidateName}" as the election winner?\n\nThis action will be permanently recorded on the blockchain.`)) return;
+
+        setIsDeclaring(true);
+        setResultMessage('');
+        try {
+            const response = await fetch(`${API_URL}/api/settings/declare-result`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.token}`
+                },
+                body: JSON.stringify({ candidateId })
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Failed to declare result');
+
+            setResultMessage(`✅ ${data.message}`);
+            await fetchDeclaredResult();
+        } catch (err) {
+            setResultMessage(`❌ ${err instanceof Error ? err.message : 'Error declaring result'}`);
+        } finally {
+            setIsDeclaring(false);
+        }
+    };
+
+    const handleRetractResult = async () => {
+        if (!window.confirm('Are you sure you want to retract the declared result?\n\nNote: The blockchain record of this declaration will remain immutable.')) return;
+
+        setIsDeclaring(true);
+        setResultMessage('');
+        try {
+            const response = await fetch(`${API_URL}/api/settings/declare-result`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`
+                }
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Failed to retract result');
+
+            setResultMessage(`✅ ${data.message}`);
+            setDeclaredResult(null);
+        } catch (err) {
+            setResultMessage(`❌ ${err instanceof Error ? err.message : 'Error retracting result'}`);
+        } finally {
+            setIsDeclaring(false);
+        }
+    };
+
+    const sortedCandidates = [...candidates].sort((a, b) => (b.voteCount || 0) - (a.voteCount || 0));
+    const totalVotes = candidates.reduce((sum, c) => sum + (c.voteCount || 0), 0);
 
     return (
         <div className="space-y-8 animate-fade-in-up">
@@ -136,140 +215,254 @@ const AdminPage: React.FC = () => {
                 </div>
             </header>
 
-            <div className="flex space-x-2 border-b border-gray-800 pb-px mb-6">
-                <button 
+            <div className="flex space-x-2 border-b border-gray-800 pb-px mb-6 overflow-x-auto">
+                <button
                     onClick={() => setActiveTab('settings')}
-                    className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 ${activeTab === 'settings' ? 'border-blue-500 text-blue-500 bg-blue-500/5' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                    className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'settings' ? 'border-blue-500 text-blue-500 bg-blue-500/5' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
                 >
                     <Settings size={18} /> Election Details
                 </button>
-                <button 
+                <button
                     onClick={() => setActiveTab('candidates')}
-                    className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 ${activeTab === 'candidates' ? 'border-blue-500 text-blue-500 bg-blue-500/5' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                    className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'candidates' ? 'border-blue-500 text-blue-500 bg-blue-500/5' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
                 >
                     <Users size={18} /> Candidates
                 </button>
-                <button 
+                <button
                     onClick={() => setActiveTab('analytics')}
-                    className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 ${activeTab === 'analytics' ? 'border-blue-500 text-blue-500 bg-blue-500/5' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                    className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'analytics' ? 'border-blue-500 text-blue-500 bg-blue-500/5' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
                 >
-                    <BarChart2 size={18} /> Analytics & Export
+                    <BarChart2 size={18} /> Analytics &amp; Export
+                </button>
+                <button
+                    onClick={() => setActiveTab('results')}
+                    className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'results' ? 'border-yellow-500 text-yellow-500 bg-yellow-500/5' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                >
+                    <Trophy size={18} /> Declare Result
                 </button>
             </div>
 
             {activeTab === 'settings' && <SettingsTab />}
             {activeTab === 'analytics' && <AnalyticsTab />}
+
+            {/* ─── CANDIDATES TAB ─── */}
             {activeTab === 'candidates' && (
                 <div className="grid lg:grid-cols-3 gap-8">
                     {/* Form Section */}
                     <Card className="lg:col-span-1 h-fit sticky top-24">
-                    <h2 className="text-xl font-bold mb-6 border-b border-gray-700 pb-2">
-                        {isEditing ? 'Edit Candidate' : 'Add New Candidate'}
-                    </h2>
-                    
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Name</label>
-                            <Input 
-                                name="name" 
-                                value={formData.name} 
-                                onChange={handleInputChange} 
-                                placeholder="e.g. Rahul Verma" 
-                                required 
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Party</label>
-                            <Input 
-                                name="party" 
-                                value={formData.party} 
-                                onChange={handleInputChange} 
-                                placeholder="e.g. Reform Party" 
-                                required 
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Position</label>
-                            <Input 
-                                name="position" 
-                                value={formData.position} 
-                                onChange={handleInputChange} 
-                                placeholder="e.g. President" 
-                                required 
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Image URL</label>
-                            <Input 
-                                name="image" 
-                                value={formData.image} 
-                                onChange={handleInputChange} 
-                                placeholder="https://..." 
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Leave blank to use an auto-generated avatar.</p>
-                        </div>
-                        
-                        <div className="pt-4 flex gap-3">
-                            <Button type="submit" className="flex-1 flex justify-center items-center gap-2">
-                                {isEditing ? <Edit2 size={16} /> : <Plus size={16} />}
-                                {isEditing ? 'Update' : 'Add Candidate'}
-                            </Button>
-                            
-                            {isEditing && (
-                                <Button type="button" variant="secondary" onClick={resetForm}>
-                                    Cancel
-                                </Button>
-                            )}
-                        </div>
-                    </form>
-                </Card>
+                        <h2 className="text-xl font-bold mb-6 border-b border-gray-700 pb-2">
+                            {isEditing ? 'Edit Candidate' : 'Add New Candidate'}
+                        </h2>
 
-                {/* List Section */}
-                <Card className="lg:col-span-2">
-                    <h2 className="text-xl font-bold mb-6 border-b border-gray-700 pb-2">Current Candidates</h2>
-                    
-                    {isLoading ? (
-                        <div className="text-center py-8 text-gray-400">Loading candidates...</div>
-                    ) : error ? (
-                        <div className="bg-red-500/10 text-red-500 p-4 rounded-lg">{error}</div>
-                    ) : candidates.length === 0 ? (
-                        <div className="text-center py-8 text-gray-400">No candidates found. Add one to get started!</div>
-                    ) : (
-                        <div className="space-y-4">
-                            {candidates.map(candidate => (
-                                <div key={candidate._id} className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-800 hover:border-gray-600 transition-colors">
-                                    <div className="flex items-center gap-4">
-                                        <img 
-                                            src={candidate.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(candidate.name)}&background=random&color=fff`} 
-                                            alt={candidate.name} 
-                                            className="w-12 h-12 rounded-full border-2 border-gray-700"
-                                        />
-                                        <div>
-                                            <h3 className="font-bold">{candidate.name}</h3>
-                                            <p className="text-sm text-gray-400">{candidate.party} • {candidate.position}</p>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Name</label>
+                                <Input name="name" value={formData.name} onChange={handleInputChange} placeholder="e.g. Rahul Verma" required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Party</label>
+                                <Input name="party" value={formData.party} onChange={handleInputChange} placeholder="e.g. Reform Party" required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Position</label>
+                                <Input name="position" value={formData.position} onChange={handleInputChange} placeholder="e.g. President" required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Image URL</label>
+                                <Input name="image" value={formData.image} onChange={handleInputChange} placeholder="https://..." />
+                                <p className="text-xs text-gray-500 mt-1">Leave blank to use an auto-generated avatar.</p>
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <Button type="submit" className="flex-1 flex justify-center items-center gap-2">
+                                    {isEditing ? <Edit2 size={16} /> : <Plus size={16} />}
+                                    {isEditing ? 'Update' : 'Add Candidate'}
+                                </Button>
+
+                                {isEditing && (
+                                    <Button type="button" variant="secondary" onClick={resetForm}>
+                                        Cancel
+                                    </Button>
+                                )}
+                            </div>
+                        </form>
+                    </Card>
+
+                    {/* List Section */}
+                    <Card className="lg:col-span-2">
+                        <h2 className="text-xl font-bold mb-6 border-b border-gray-700 pb-2">Current Candidates</h2>
+
+                        {isLoading ? (
+                            <div className="text-center py-8 text-gray-400">Loading candidates...</div>
+                        ) : error ? (
+                            <div className="bg-red-500/10 text-red-500 p-4 rounded-lg">{error}</div>
+                        ) : candidates.length === 0 ? (
+                            <div className="text-center py-8 text-gray-400">No candidates found. Add one to get started!</div>
+                        ) : (
+                            <div className="space-y-4">
+                                {candidates.map(candidate => (
+                                    <div key={candidate._id} className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-800 hover:border-gray-600 transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <img
+                                                src={candidate.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(candidate.name)}&background=random&color=fff`}
+                                                alt={candidate.name}
+                                                className="w-12 h-12 rounded-full border-2 border-gray-700"
+                                            />
+                                            <div>
+                                                <h3 className="font-bold">{candidate.name}</h3>
+                                                <p className="text-sm text-gray-400">{candidate.party} • {candidate.position}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleEdit(candidate)}
+                                                className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                                title="Edit"
+                                            >
+                                                <Edit2 size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(candidate._id)}
+                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                title="Delete"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button 
-                                            onClick={() => handleEdit(candidate)}
-                                            className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"
-                                            title="Edit"
-                                        >
-                                            <Edit2 size={18} />
-                                        </button>
-                                        <button 
-                                            onClick={() => handleDelete(candidate._id)}
-                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                            title="Delete"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                </div>
+            )}
+
+            {/* ─── RESULTS / DECLARE WINNER TAB ─── */}
+            {activeTab === 'results' && (
+                <div className="space-y-8">
+
+                    {/* Current Declaration Status */}
+                    {declaredResult?.declared && (
+                        <div className="relative overflow-hidden rounded-2xl border border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 via-yellow-400/5 to-transparent p-8">
+                            {/* Decorative glow */}
+                            <div className="absolute -top-10 -right-10 w-48 h-48 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none" />
+                            <div className="relative flex flex-col md:flex-row items-center gap-6">
+                                <div className="flex-shrink-0">
+                                    <Crown size={56} className="text-yellow-400 drop-shadow-[0_0_20px_rgba(234,179,8,0.5)]" />
                                 </div>
-                            ))}
+                                <div className="flex-1 text-center md:text-left">
+                                    <p className="text-yellow-400 font-semibold text-sm uppercase tracking-widest mb-1">✅ Official Result Declared</p>
+                                    <h2 className="text-3xl font-extrabold text-white">{declaredResult.winner.name}</h2>
+                                    <p className="text-gray-300 mt-1">{declaredResult.winner.party} — {declaredResult.winner.position}</p>
+                                    <p className="text-gray-500 text-sm mt-2">
+                                        {declaredResult.winner.voteCount} votes · Declared on {new Date(declaredResult.declaredAt).toLocaleString()}
+                                    </p>
+                                </div>
+                                <div className="flex-shrink-0">
+                                    <img
+                                        src={declaredResult.winner.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(declaredResult.winner.name)}&background=ca8a04&color=fff&size=128`}
+                                        alt={declaredResult.winner.name}
+                                        className="w-20 h-20 rounded-full border-4 border-yellow-500/50 object-cover"
+                                    />
+                                </div>
+                            </div>
+                            <div className="mt-6 flex justify-center md:justify-start">
+                                <button
+                                    onClick={handleRetractResult}
+                                    disabled={isDeclaring}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-red-400 border border-gray-700 hover:border-red-500/40 rounded-lg transition-colors disabled:opacity-50"
+                                >
+                                    <RotateCcw size={14} />
+                                    Retract Declaration
+                                </button>
+                            </div>
                         </div>
                     )}
-                </Card>
+
+                    {resultMessage && (
+                        <div className={`p-4 rounded-lg text-sm font-medium ${resultMessage.startsWith('✅') ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                            {resultMessage}
+                        </div>
+                    )}
+
+                    {/* Candidate Standings */}
+                    <Card>
+                        <div className="flex items-center justify-between mb-6 border-b border-gray-700 pb-4">
+                            <h2 className="text-xl font-bold flex items-center gap-2">
+                                <Trophy size={20} className="text-yellow-500" /> Candidate Standings
+                            </h2>
+                            <span className="text-sm text-gray-500">{totalVotes} total votes</span>
+                        </div>
+
+                        {isLoading ? (
+                            <div className="text-center py-8 text-gray-400">Loading...</div>
+                        ) : sortedCandidates.length === 0 ? (
+                            <div className="text-center py-8 text-gray-400">No candidates registered yet.</div>
+                        ) : (
+                            <div className="space-y-4">
+                                {sortedCandidates.map((candidate, index) => {
+                                    const pct = totalVotes > 0 ? ((candidate.voteCount || 0) / totalVotes) * 100 : 0;
+                                    const isCurrentWinner = declaredResult?.declared && declaredResult.winner._id === candidate._id;
+
+                                    return (
+                                        <div
+                                            key={candidate._id}
+                                            className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${isCurrentWinner ? 'border-yellow-500/50 bg-yellow-500/5' : 'border-gray-800 bg-gray-900/50 hover:border-gray-600'}`}
+                                        >
+                                            {/* Rank */}
+                                            <div className={`w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${index === 0 ? 'bg-yellow-500/20 text-yellow-400' : index === 1 ? 'bg-gray-400/20 text-gray-300' : index === 2 ? 'bg-orange-500/20 text-orange-400' : 'bg-gray-800 text-gray-500'}`}>
+                                                {index + 1}
+                                            </div>
+
+                                            {/* Avatar */}
+                                            <img
+                                                src={candidate.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(candidate.name)}&background=random&color=fff`}
+                                                alt={candidate.name}
+                                                className={`w-12 h-12 rounded-full border-2 flex-shrink-0 ${isCurrentWinner ? 'border-yellow-500' : 'border-gray-700'}`}
+                                            />
+
+                                            {/* Info + bar */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-semibold text-white truncate">{candidate.name}</p>
+                                                    {isCurrentWinner && <Crown size={14} className="text-yellow-400 flex-shrink-0" />}
+                                                </div>
+                                                <p className="text-xs text-gray-400 mb-2">{candidate.party} · {candidate.position}</p>
+                                                <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                                                    <div
+                                                        className={`h-full rounded-full transition-all duration-700 ${index === 0 ? 'bg-gradient-to-r from-yellow-500 to-orange-400' : 'bg-gray-600'}`}
+                                                        style={{ width: `${Math.max(pct, 2)}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Vote count */}
+                                            <div className="text-right flex-shrink-0">
+                                                <p className="text-xl font-bold text-white">{candidate.voteCount || 0}</p>
+                                                <p className="text-xs text-gray-500">{pct.toFixed(1)}%</p>
+                                            </div>
+
+                                            {/* Declare button */}
+                                            {!declaredResult?.declared && (
+                                                <button
+                                                    onClick={() => handleDeclareWinner(candidate._id, candidate.name)}
+                                                    disabled={isDeclaring}
+                                                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:border-yellow-500/60 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+                                                >
+                                                    <Trophy size={14} />
+                                                    Declare Winner
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </Card>
+
+                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 text-sm text-blue-300">
+                        <strong>ℹ️ Note:</strong> Declaring a result is recorded as an immutable block on the blockchain. Retracting a declaration removes the public announcement, but the blockchain record remains permanent as an audit trail.
+                    </div>
                 </div>
             )}
         </div>

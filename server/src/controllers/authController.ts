@@ -39,7 +39,7 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
                 userId: user.id
             });
 
-            blockchain.addTransaction({
+            await blockchain.addTransaction({
                 type: 'REGISTRATION',
                 data: { userId: user.id, username, email },
                 timestamp: Date.now()

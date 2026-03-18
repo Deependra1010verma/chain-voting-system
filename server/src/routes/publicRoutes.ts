@@ -10,11 +10,11 @@ router.get('/stats', async (req, res) => {
     try {
         // 1. Total users registered (for turnout percentage without exposing user data)
         const totalUsers = await User.countDocuments();
-        
+
         // 2. Total votes cast
         const totalVotes = await User.countDocuments({ hasVoted: true });
-        
-        // 3. Candidate data (without sensitive user linkage if any)
+
+        // 3. Candidate data
         const candidates = await Candidate.find({}, 'name party position image voteCount');
 
         // 4. Basic Blockchain Health Proof
@@ -22,8 +22,26 @@ router.get('/stats', async (req, res) => {
         const blockHeight = blockchain.chain.length;
         const lastMinedBlockStamp = blockchain.getLatestBlock().timestamp;
 
-        // 5. Election Status
-        const settings = await Settings.findOne();
+        // 5. Election Status with populated winner
+        const settings = await Settings.findOne().populate('declaredWinnerId', 'name party position image voteCount');
+
+        // Build declared result info
+        let declaredResult = null;
+        if (settings?.resultDeclared && settings.declaredWinnerId) {
+            const winner = settings.declaredWinnerId as any;
+            declaredResult = {
+                declared: true,
+                declaredAt: settings.declaredAt,
+                winner: {
+                    _id: winner._id,
+                    name: winner.name,
+                    party: winner.party,
+                    position: winner.position,
+                    image: winner.image,
+                    voteCount: winner.voteCount
+                }
+            };
+        }
 
         res.json({
             election: {
@@ -42,7 +60,8 @@ router.get('/stats', async (req, res) => {
                 isValid: isChainValid,
                 blockHeight,
                 lastBlockTimestamp: lastMinedBlockStamp
-            }
+            },
+            declaredResult
         });
     } catch (error) {
         res.status(500).json({ message: 'Server Error fetching public stats' });

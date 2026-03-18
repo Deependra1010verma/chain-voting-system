@@ -1,13 +1,41 @@
 import { Block } from './Block';
 import { Transaction } from './types';
+import BlockModel from './models/BlockModel';
 
 export class Blockchain {
-    public chain: Block[];
-    private difficulty: number;
+    public chain: Block[] = [];
+    private difficulty: number = 2; // Keep it low for fast testing
 
     constructor() {
-        this.chain = [this.createGenesisBlock()];
-        this.difficulty = 2; // Keep it low for fast testing
+        // Initialization is now handled by the async init() method
+    }
+
+    /**
+     * Initializes the blockchain by loading existing blocks from MongoDB.
+     * If no blocks exist, it creates and saves the Genesis block.
+     */
+    public async init(): Promise<void> {
+        const dbBlocks = await BlockModel.find().sort({ index: 1 });
+
+        if (dbBlocks.length > 0) {
+            this.chain = dbBlocks.map(dbBlock => {
+                const block = new Block(
+                    dbBlock.index,
+                    dbBlock.timestamp,
+                    dbBlock.transaction,
+                    dbBlock.previousHash
+                );
+                block.hash = dbBlock.hash;
+                block.nonce = dbBlock.nonce;
+                return block;
+            });
+            console.log(`Blockchain initialized with ${this.chain.length} blocks from database.`);
+        } else {
+            console.log('No existing blockchain found. Creating Genesis block...');
+            const genesisBlock = this.createGenesisBlock();
+            await this.saveBlockToDb(genesisBlock);
+            this.chain = [genesisBlock];
+        }
     }
 
     private createGenesisBlock(): Block {
@@ -23,7 +51,7 @@ export class Blockchain {
         return this.chain[this.chain.length - 1];
     }
 
-    public addTransaction(transaction: Transaction): void {
+    public async addTransaction(transaction: Transaction): Promise<void> {
         const newBlock = new Block(
             this.chain.length,
             Date.now(),
@@ -33,7 +61,20 @@ export class Blockchain {
 
         newBlock.mineBlock(this.difficulty);
         console.log('Block successfully mined!');
+        
+        await this.saveBlockToDb(newBlock);
         this.chain.push(newBlock);
+    }
+
+    private async saveBlockToDb(block: Block): Promise<void> {
+        await BlockModel.create({
+            index: block.index,
+            timestamp: block.timestamp,
+            transaction: block.transaction,
+            previousHash: block.previousHash,
+            hash: block.hash,
+            nonce: block.nonce
+        });
     }
 
     public isChainValid(): boolean {
@@ -42,16 +83,10 @@ export class Blockchain {
             const previousBlock = this.chain[i - 1];
 
             if (currentBlock.hash !== currentBlock.calculateHash()) {
-                console.error('Hash invalid for block', currentBlock.index);
-                console.error('Expected:', currentBlock.hash);
-                console.error('Calculated:', currentBlock.calculateHash());
-                console.error('Transaction Object:', currentBlock.transaction);
-                console.error('Transaction Stringified:', JSON.stringify(currentBlock.transaction));
                 return false;
             }
 
             if (currentBlock.previousHash !== previousBlock.hash) {
-                console.error('Previous Hash invalid', currentBlock);
                 return false;
             }
         }

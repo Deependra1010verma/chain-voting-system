@@ -1,8 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Users, Vote, Link, CheckCircle } from 'lucide-react';
+import { Shield, Users, Vote, Link, CheckCircle, Crown } from 'lucide-react';
 import Card from '../components/Card';
 import API_URL from '../config';
+
+interface DeclaredResult {
+    declared: boolean;
+    declaredAt: string;
+    winner: {
+        _id: string;
+        name: string;
+        party: string;
+        position: string;
+        image: string;
+        voteCount: number;
+    };
+}
 
 interface PublicStats {
     election: {
@@ -29,6 +42,7 @@ interface PublicStats {
         blockHeight: number;
         lastBlockTimestamp: number;
     };
+    declaredResult?: DeclaredResult | null;
 }
 
 const PublicDashboardPage: React.FC = () => {
@@ -79,6 +93,40 @@ const PublicDashboardPage: React.FC = () => {
 
     return (
         <div className="space-y-12 pb-12">
+
+            {/* ─── OFFICIAL WINNER BANNER ─── */}
+            {data.declaredResult?.declared && (
+                <motion.section
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="relative overflow-hidden rounded-2xl border border-yellow-500/50 bg-gradient-to-br from-yellow-500/15 via-yellow-400/5 to-transparent p-8"
+                >
+                    <div className="absolute -top-12 -right-12 w-64 h-64 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none" />
+                    <div className="relative flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+                        <Crown size={64} className="text-yellow-400 flex-shrink-0 drop-shadow-[0_0_24px_rgba(234,179,8,0.6)] animate-pulse" />
+                        <div className="flex-1">
+                            <p className="text-yellow-400 font-bold text-xs uppercase tracking-[0.2em] mb-2">🏆 Official Election Result Declared</p>
+                            <h2 className="text-4xl font-black text-white mb-1">{data.declaredResult.winner.name}</h2>
+                            <p className="text-lg text-yellow-200/80">{data.declaredResult.winner.party}</p>
+                            <p className="text-gray-400 text-sm mt-1">{data.declaredResult.winner.position}</p>
+                            <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-4">
+                                <span className="px-3 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded-full text-yellow-300 text-sm font-semibold">
+                                    {data.declaredResult.winner.voteCount} votes received
+                                </span>
+                                <span className="px-3 py-1 bg-gray-800 border border-gray-700 rounded-full text-gray-400 text-sm">
+                                    Declared: {new Date(data.declaredResult.declaredAt).toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
+                        <img
+                            src={data.declaredResult.winner.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.declaredResult.winner.name)}&background=ca8a04&color=fff&size=160`}
+                            alt={data.declaredResult.winner.name}
+                            className="w-28 h-28 rounded-full border-4 border-yellow-500/60 object-cover shadow-[0_0_30px_rgba(234,179,8,0.3)] flex-shrink-0"
+                        />
+                    </div>
+                </motion.section>
+            )}
+
             {/* Hero Section */}
             <section className="text-center pt-8 pb-4">
                 <motion.h1 

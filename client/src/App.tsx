@@ -4,7 +4,6 @@ import Layout from './components/Layout';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-
 import DashboardPage from './pages/DashboardPage';
 import VotePage from './pages/VotePage';
 import ResultsPage from './pages/ResultsPage';

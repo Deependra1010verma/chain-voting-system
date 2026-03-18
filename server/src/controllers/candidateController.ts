@@ -56,7 +56,7 @@ export const addCandidate = async (req: AuthRequest, res: Response): Promise<voi
             details: { type: 'ADD_CANDIDATE', candidateId: candidate._id, name, party },
             userId
         });
-        blockchain.addTransaction({
+        await blockchain.addTransaction({
             type: 'ADMIN_ACTION',
             data: { action: 'ADD_CANDIDATE', candidateId: candidate._id, name, party, userId },
             timestamp: Date.now()
@@ -110,7 +110,7 @@ export const updateCandidate = async (req: AuthRequest, res: Response): Promise<
                 details: { type: 'UPDATE_CANDIDATE', candidateId: candidate._id, name: candidate.name },
                 userId
             });
-            blockchain.addTransaction({
+            await blockchain.addTransaction({
                 type: 'ADMIN_ACTION',
                 data: { action: 'UPDATE_CANDIDATE', candidateId: candidate._id, name: candidate.name, userId },
                 timestamp: Date.now()
@@ -138,7 +138,7 @@ export const deleteCandidate = async (req: AuthRequest, res: Response): Promise<
                 details: { type: 'DELETE_CANDIDATE', candidateId: candidate._id, name: candidate.name },
                 userId
             });
-            blockchain.addTransaction({
+            await blockchain.addTransaction({
                 type: 'ADMIN_ACTION',
                 data: { action: 'DELETE_CANDIDATE', candidateId: candidate._id, name: candidate.name, userId },
                 timestamp: Date.now()

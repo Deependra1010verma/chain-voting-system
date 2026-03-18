@@ -45,11 +45,15 @@ export const castVote = async (req: AuthRequest, res: Response): Promise<void> =
 
         const newTransaction: Transaction = {
             type: 'VOTE',
-            data: { voterId: user.id, candidate: candidateId },
+            data: { 
+                voterId: user.id, 
+                candidate: candidateId,
+                electionId: settings?.currentElectionId || 'unknown'
+            },
             timestamp: Date.now(),
         };
 
-        blockchain.addTransaction(newTransaction);
+        await blockchain.addTransaction(newTransaction);
 
         await AuditLog.create({
             action: 'VOTE',
