@@ -6,6 +6,7 @@ interface User {
     email: string;
     isAdmin: boolean;
     hasVoted: boolean;
+    votedElections?: string[];
     token: string;
 }
 

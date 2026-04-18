@@ -50,6 +50,8 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
                 username: user.username,
                 email: user.email,
                 isAdmin: user.isAdmin,
+                hasVoted: user.hasVoted,
+                votedElections: user.votedElections || [],
                 token: generateToken(user.id, user.isAdmin),
             });
         } else {
@@ -73,6 +75,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
                 email: user.email,
                 isAdmin: user.isAdmin,
                 hasVoted: user.hasVoted,
+                votedElections: user.votedElections || [],
                 token: generateToken(user.id, user.isAdmin),
             });
         } else {

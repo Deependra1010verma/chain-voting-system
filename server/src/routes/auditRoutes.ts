@@ -8,6 +8,7 @@ const router = express.Router();
 
 router.get('/', protect, admin, async (req, res) => {
     try {
+        await blockchain.ensureInitialized();
         const dbLogs = await AuditLog.find().sort({ timestamp: -1 }).populate('userId', 'username email');
         const chainLogs = blockchain.chain; // Just returning the whole chain
 

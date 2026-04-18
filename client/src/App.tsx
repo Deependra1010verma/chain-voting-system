@@ -11,6 +11,7 @@ import AdminPage from './pages/AdminPage';
 import AuditPage from './pages/AuditPage';
 import CandidateRegistrationPage from './pages/CandidateRegistrationPage';
 import PublicDashboardPage from './pages/PublicDashboardPage';
+import ElectionsPage from './pages/ElectionsPage';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/vote" element={<VotePage />} />
             <Route path="/results" element={<ResultsPage />} />
+            <Route path="/elections" element={<ElectionsPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/audit" element={<AuditPage />} />
             <Route path="/candidate-register" element={<CandidateRegistrationPage />} />

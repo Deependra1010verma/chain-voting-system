@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, CheckCircle, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { CheckCircle, Shield } from 'lucide-react';
 import API_URL from '../config';
 
 interface Candidate {
@@ -12,99 +12,167 @@ interface Candidate {
     party: string;
     position: string;
     image: string;
+    voteCount?: number;
+}
+
+interface ElectionData {
+    _id: string;
+    electionName: string;
+    electionId: string;
+    isActive: boolean;
+    hasVoted: boolean;
+    startDate?: string;
+    endDate?: string;
+    candidates: Candidate[];
 }
 
 const VotePage: React.FC = () => {
-    const { user, login } = useAuth(); // login used to update user state after voting
+    const { user, login } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const requestedElectionId = searchParams.get('electionId');
+
+    const [electionData, setElectionData] = useState<ElectionData | null>(null);
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isFetching, setIsFetching] = useState(true);
     const [error, setError] = useState('');
-    const [electionData, setElectionData] = useState<any>(null);
 
     useEffect(() => {
-        const fetchCandidates = async () => {
-            try {
-                const [candidatesRes, settingsRes] = await Promise.all([
-                    fetch(`${API_URL}/api/candidates`),
-                    fetch(`${API_URL}/api/settings`)
-                ]);
+        const fetchElection = async () => {
+            if (!user) {
+                setIsFetching(false);
+                return;
+            }
 
-                if (!candidatesRes.ok) {
-                    throw new Error(`Failed to fetch candidates: ${candidatesRes.status}`);
+            try {
+                const response = await fetch(`${API_URL}/api/elections`, {
+                    headers: {
+                        Authorization: `Bearer ${user.token}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch election: ${response.status}`);
                 }
-                const data = await candidatesRes.json();
-                setCandidates(data);
-                
-                if (settingsRes.ok) {
-                    const settings = await settingsRes.json();
-                    setElectionData(settings);
+
+                const data: ElectionData[] = await response.json();
+                const resolvedElection = requestedElectionId
+                    ? data.find((election) => election.electionId === requestedElectionId) || null
+                    : data.find((election) => election.isActive) || null;
+
+                if (!resolvedElection) {
+                    setError(
+                        requestedElectionId
+                            ? 'The selected election could not be loaded.'
+                            : 'No active election is available for voting right now.'
+                    );
+                    return;
                 }
+
+                setElectionData(resolvedElection);
+                setCandidates(resolvedElection.candidates || []);
             } catch (err) {
-                console.error("Error fetching candidates:", err);
-                setError('Failed to load candidates. Please try again later.');
+                console.error('Error fetching election:', err);
+                setError('Failed to load election. Please try again later.');
+            } finally {
+                setIsFetching(false);
             }
         };
 
-        fetchCandidates();
-    }, []);
+        fetchElection();
+    }, [requestedElectionId, user]);
 
     if (!user) {
         return <div className="text-center mt-20">Please log in to vote.</div>;
     }
 
-    if (user.hasVoted) {
+    if (isFetching) {
+        return <div className="text-center mt-20 text-gray-400">Loading election...</div>;
+    }
+
+    if (error) {
         return (
             <div className="text-center mt-20 space-y-4">
-                <CheckCircle size={64} className="mx-auto text-green-500" />
-                <h2 className="text-3xl font-bold">You have already voted!</h2>
-                <p className="text-gray-400">Your vote is securely recorded on the blockchain.</p>
-                <Button onClick={() => navigate('/results')}>View Results</Button>
+                <p className="text-red-400">{error}</p>
+                <Button onClick={() => navigate('/elections')}>Back to Elections</Button>
             </div>
         );
     }
 
-    if (electionData && !electionData.isActive) {
+    if (!electionData) {
+        return (
+            <div className="text-center mt-20 space-y-4">
+                <p className="text-gray-400">No election is available for voting right now.</p>
+                <Button onClick={() => navigate('/elections')}>Back to Elections</Button>
+            </div>
+        );
+    }
+
+    if (electionData.hasVoted) {
+        return (
+            <div className="text-center mt-20 space-y-4">
+                <CheckCircle size={64} className="mx-auto text-green-500" />
+                <h2 className="text-3xl font-bold">You have already voted</h2>
+                <p className="text-gray-400">
+                    Your vote for {electionData.electionName} is securely recorded on the blockchain.
+                </p>
+                <Button onClick={() => navigate('/elections')}>Back to Elections</Button>
+            </div>
+        );
+    }
+
+    if (!electionData.isActive) {
         return (
             <div className="text-center mt-20 space-y-4">
                 <Shield size={64} className="mx-auto text-yellow-500" />
                 <h2 className="text-3xl font-bold">Voting is Closed</h2>
-                <p className="text-gray-400">The election is currently not active.</p>
-                <Button onClick={() => navigate('/dashboard')}>Go Back</Button>
+                <p className="text-gray-400">{electionData.electionName} is not active anymore.</p>
+                <Button onClick={() => navigate(`/results?electionId=${encodeURIComponent(electionData.electionId)}`)}>
+                    View Results
+                </Button>
             </div>
         );
     }
 
     const handleVote = async () => {
-        if (!selectedCandidate) return;
+        if (!selectedCandidate) {
+            return;
+        }
 
         setIsLoading(true);
         setError('');
 
         try {
-            const token = user.token; // Assuming user object has token
             const response = await fetch(`${API_URL}/api/vote/vote`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    Authorization: `Bearer ${user.token}`,
                 },
-                body: JSON.stringify({ candidate: selectedCandidate }),
+                body: JSON.stringify({
+                    candidate: selectedCandidate,
+                    electionId: electionData.electionId,
+                }),
             });
 
             if (!response.ok) {
-                throw new Error(`Voting failed: ${response.status} (Check Vercel Logs)`);
+                const payload = await response.json().catch(() => null);
+                throw new Error(payload?.message || `Voting failed: ${response.status}`);
             }
 
-            // @ts-ignore
-            const data = await response.json();
+            const currentVotedElections = Array.isArray(user.votedElections) ? user.votedElections : [];
+            const updatedUser = {
+                ...user,
+                hasVoted: true,
+                votedElections: currentVotedElections.includes(electionData.electionId)
+                    ? currentVotedElections
+                    : [...currentVotedElections, electionData.electionId],
+            };
 
-            // Update user state locally
-            const updatedUser = { ...user, hasVoted: true };
-            login(updatedUser); // Update context
-
-            navigate('/results');
+            login(updatedUser);
+            navigate(`/results?electionId=${encodeURIComponent(electionData.electionId)}`);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
@@ -115,8 +183,17 @@ const VotePage: React.FC = () => {
     return (
         <div className="space-y-8 animate-fade-in-up">
             <header className="text-center space-y-2">
+                <div className="flex justify-center">
+                    <Link
+                        to="/elections"
+                        className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300"
+                    >
+                        <ArrowLeft size={16} />
+                        <span>Back to Elections</span>
+                    </Link>
+                </div>
                 <h1 className="text-3xl font-bold">Cast Your Vote</h1>
-                <p className="text-gray-400">Select your preferred candidate securely.</p>
+                <p className="text-gray-400">{electionData.electionName}</p>
             </header>
 
             {error && (
@@ -129,21 +206,29 @@ const VotePage: React.FC = () => {
                 {candidates.map((candidate) => (
                     <Card
                         key={candidate._id}
-                        className={`cursor-pointer transition-all duration-300 border-2 ${selectedCandidate === candidate._id ? 'border-blue-500 bg-blue-500/10' : 'border-transparent hover:border-gray-600'}`}
+                        className={`cursor-pointer transition-all duration-300 border-2 ${selectedCandidate === candidate._id
+                                ? 'border-blue-500 bg-blue-500/10'
+                                : 'border-transparent hover:border-gray-600'
+                            }`}
                     >
                         <div onClick={() => setSelectedCandidate(candidate._id)} className="text-center space-y-4">
                             <img
-                                src={candidate.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(candidate.name)}&background=random&color=fff&size=200`}
+                                src={
+                                    candidate.image ||
+                                    `https://ui-avatars.com/api/?name=${encodeURIComponent(candidate.name)}&background=random&color=fff&size=200`
+                                }
                                 alt={candidate.name}
-                                className="w-32 h-32 rounded-full mx-auto border-4 border-gray-700 shadow-xl"
+                                className="w-32 h-32 rounded-full mx-auto border-4 border-gray-700 shadow-xl object-cover"
                             />
                             <div>
                                 <h3 className="text-xl font-bold">{candidate.name}</h3>
                                 <p className="text-blue-400 text-sm">{candidate.party}</p>
+                                <p className="text-gray-400 text-xs mt-1">{candidate.position}</p>
                             </div>
                             <Button
                                 variant={selectedCandidate === candidate._id ? 'primary' : 'secondary'}
                                 className="w-full"
+                                type="button"
                             >
                                 {selectedCandidate === candidate._id ? 'Selected' : 'Select'}
                             </Button>

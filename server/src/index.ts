@@ -28,12 +28,14 @@ import mongoose from 'mongoose';
 const ensureDbConnection = async (req: Request, res: Response, next: any) => {
     // 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
     if (mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2) {
+        await blockchain.ensureInitialized();
         return next();
     }
     
     try {
         console.log('[server]: Connecting to Database lazily...');
         await connectDB();
+        await blockchain.ensureInitialized();
         next();
     } catch (err) {
         console.error('[server lazy db connection error]:', err);
@@ -54,6 +56,8 @@ import candidateRoutes from './routes/candidateRoutes';
 import settingsRoutes from './routes/settingsRoutes';
 import auditRoutes from './routes/auditRoutes';
 import publicRoutes from './routes/publicRoutes';
+import electionRoutes from './routes/electionRoutes';
+import { blockchain } from './blockchainInstance';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/vote', voteRoutes);
@@ -61,9 +65,7 @@ app.use('/api/candidates', candidateRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/public', publicRoutes);
-
-
-import { blockchain } from './blockchainInstance';
+app.use('/api/elections', electionRoutes);
 
 // Start Server locally
 if (process.env.NODE_ENV !== 'production') {
@@ -72,7 +74,7 @@ if (process.env.NODE_ENV !== 'production') {
         // Locally, we can try to connect immediately, but it won't crash the server if it fails
         try {
             await connectDB();
-            await blockchain.init();
+            await blockchain.ensureInitialized();
         } catch (err) {
             console.error('[server startup db connection/blockchain init error]:', err);
         }

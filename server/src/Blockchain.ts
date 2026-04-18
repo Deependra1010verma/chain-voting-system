@@ -5,6 +5,8 @@ import BlockModel from './models/BlockModel';
 export class Blockchain {
     public chain: Block[] = [];
     private difficulty: number = 2; // Keep it low for fast testing
+    private initialized: boolean = false;
+    private initPromise: Promise<void> | null = null;
 
     constructor() {
         // Initialization is now handled by the async init() method
@@ -15,6 +17,16 @@ export class Blockchain {
      * If no blocks exist, it creates and saves the Genesis block.
      */
     public async init(): Promise<void> {
+        if (this.initialized) {
+            return;
+        }
+
+        if (this.initPromise) {
+            await this.initPromise;
+            return;
+        }
+
+        this.initPromise = (async () => {
         const dbBlocks = await BlockModel.find().sort({ index: 1 });
 
         if (dbBlocks.length > 0) {
@@ -36,6 +48,18 @@ export class Blockchain {
             await this.saveBlockToDb(genesisBlock);
             this.chain = [genesisBlock];
         }
+        this.initialized = true;
+        })();
+
+        try {
+            await this.initPromise;
+        } finally {
+            this.initPromise = null;
+        }
+    }
+
+    public async ensureInitialized(): Promise<void> {
+        await this.init();
     }
 
     private createGenesisBlock(): Block {
@@ -52,6 +76,8 @@ export class Blockchain {
     }
 
     public async addTransaction(transaction: Transaction): Promise<void> {
+        await this.ensureInitialized();
+
         const newBlock = new Block(
             this.chain.length,
             Date.now(),

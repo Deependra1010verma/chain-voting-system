@@ -21,8 +21,8 @@ const LandingPage: React.FC = () => {
                     <Link to="/register">
                         <Button className="text-lg px-8 py-3">Get Started</Button>
                     </Link>
-                    <Link to="/results">
-                        <Button variant="secondary" className="text-lg px-8 py-3">View Real-time Results</Button>
+                    <Link to="/transparency">
+                        <Button variant="secondary" className="text-lg px-8 py-3">View Public Dashboard</Button>
                     </Link>
                 </div>
             </section>

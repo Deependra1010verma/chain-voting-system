@@ -8,11 +8,16 @@ const router = express.Router();
 
 router.get('/stats', async (req, res) => {
     try {
+        await blockchain.ensureInitialized();
+        const settings = await Settings.findOne().populate('declaredWinnerId', 'name party position image voteCount');
+
         // 1. Total users registered (for turnout percentage without exposing user data)
         const totalUsers = await User.countDocuments();
 
-        // 2. Total votes cast
-        const totalVotes = await User.countDocuments({ hasVoted: true });
+        // 2. Total votes cast in the current/latest election
+        const totalVotes = settings?.currentElectionId
+            ? await User.countDocuments({ votedElections: settings.currentElectionId })
+            : 0;
 
         // 3. Candidate data
         const candidates = await Candidate.find({}, 'name party position image voteCount');
@@ -21,9 +26,6 @@ router.get('/stats', async (req, res) => {
         const isChainValid = blockchain.isChainValid();
         const blockHeight = blockchain.chain.length;
         const lastMinedBlockStamp = blockchain.getLatestBlock().timestamp;
-
-        // 5. Election Status with populated winner
-        const settings = await Settings.findOne().populate('declaredWinnerId', 'name party position image voteCount');
 
         // Build declared result info
         let declaredResult = null;

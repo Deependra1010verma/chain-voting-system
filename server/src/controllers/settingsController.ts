@@ -7,6 +7,14 @@ import ElectionHistory from '../models/ElectionHistory';
 import { blockchain } from '../blockchainInstance';
 import mongoose from 'mongoose';
 
+const getCurrentElectionVoteCount = async (currentElectionId?: string) => {
+    if (!currentElectionId) {
+        return 0;
+    }
+
+    return User.countDocuments({ votedElections: currentElectionId });
+};
+
 // Get Current Settings
 export const getSettings = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -28,8 +36,16 @@ export const updateSettings = async (req: Request, res: Response): Promise<void>
 
         let settings = await Settings.findOne();
 
+        if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+            res.status(400).json({ message: 'End date must be after start date' });
+            return;
+        }
+
         if (settings) {
-            const isStartingNew = isActive === true && settings.isActive === false;
+            const isStartingNew =
+                isActive === true &&
+                settings.isActive === false &&
+                settings.resultDeclared === true;
 
             settings.electionName = electionName !== undefined ? electionName : settings.electionName;
             settings.startDate = startDate !== undefined ? startDate : settings.startDate;
@@ -43,12 +59,12 @@ export const updateSettings = async (req: Request, res: Response): Promise<void>
                 settings.declaredWinnerId = undefined;
                 settings.declaredAt = undefined;
 
-                // Reset all users' voting status so they can vote in the NEW election
+                // Reset current-election flags while preserving historic participation.
                 await User.updateMany({}, { hasVoted: false });
 
                 // Reset all candidates' vote counts for the NEW election
                 await Candidate.updateMany({}, { voteCount: 0 });
-                
+
                 console.log(`New election started: ${settings.electionName} (${settings.currentElectionId})`);
             }
 
@@ -109,29 +125,38 @@ export const declareResult = async (req: Request, res: Response): Promise<void> 
             settings = await Settings.create({});
         }
 
+        if (settings.resultDeclared) {
+            res.status(400).json({ message: 'Result has already been declared for this election' });
+            return;
+        }
+
         settings.resultDeclared = true;
         settings.declaredWinnerId = candidate._id as any;
         settings.declaredAt = new Date();
-        settings.isActive = false; 
+        settings.isActive = false;
         await settings.save();
 
         // Archive result to history
         const allCandidates = await Candidate.find({});
-        await ElectionHistory.create({
-            electionName: settings.electionName,
-            electionId: settings.currentElectionId,
-            winner: {
-                name: candidate.name,
-                party: candidate.party,
-                voteCount: candidate.voteCount
+        await ElectionHistory.findOneAndUpdate(
+            { electionId: settings.currentElectionId },
+            {
+                electionName: settings.electionName,
+                electionId: settings.currentElectionId,
+                winner: {
+                    name: candidate.name,
+                    party: candidate.party,
+                    voteCount: candidate.voteCount
+                },
+                results: allCandidates.map(c => ({
+                    name: c.name,
+                    party: c.party,
+                    voteCount: c.voteCount
+                })),
+                declaredAt: settings.declaredAt
             },
-            results: allCandidates.map(c => ({
-                name: c.name,
-                party: c.party,
-                voteCount: c.voteCount
-            })),
-            declaredAt: settings.declaredAt
-        });
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
 
         await AuditLog.create({
             action: 'ADMIN_ACTION',
@@ -190,6 +215,8 @@ export const undeclareResult = async (req: Request, res: Response): Promise<void
         settings.declaredAt = undefined;
         await settings.save();
 
+        await ElectionHistory.deleteOne({ electionId: settings.currentElectionId });
+
         await AuditLog.create({
             action: 'ADMIN_ACTION',
             details: { type: 'RETRACT_RESULT' },
@@ -211,8 +238,9 @@ export const undeclareResult = async (req: Request, res: Response): Promise<void
 // Get Analytics
 export const getAnalytics = async (req: Request, res: Response): Promise<void> => {
     try {
+        const settings = await Settings.findOne();
         const totalUsers = await User.countDocuments();
-        const totalVotesCast = await User.countDocuments({ hasVoted: true });
+        const totalVotesCast = await getCurrentElectionVoteCount(settings?.currentElectionId);
 
         res.json({
             totalUsers,

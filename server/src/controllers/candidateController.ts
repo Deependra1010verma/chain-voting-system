@@ -1,20 +1,27 @@
 import { Request, Response } from 'express';
 import Candidate from '../models/Candidate';
-import { IUser } from '../models/User';
 import AuditLog from '../models/AuditLog';
 import { blockchain } from '../blockchainInstance';
 
 interface AuthRequest extends Request {
-    user?: IUser;
+    user?: {
+        id?: string;
+        isAdmin?: boolean;
+    };
 }
 
 export const registerAsCandidate = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { name, party, position, image } = req.body;
-        const userId = req.user?._id;
+        const userId = req.user?.id;
 
         if (!userId) {
             res.status(401).json({ message: 'User not authenticated' });
+            return;
+        }
+
+        if (!name || !party || !position || !image) {
+            res.status(400).json({ message: 'All candidate fields are required' });
             return;
         }
 
@@ -42,7 +49,12 @@ export const registerAsCandidate = async (req: AuthRequest, res: Response): Prom
 export const addCandidate = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { name, party, position, image } = req.body;
-        const userId = req.user?._id;
+        const userId = req.user?.id;
+
+        if (!name || !party || !position || !image) {
+            res.status(400).json({ message: 'All candidate fields are required' });
+            return;
+        }
 
         const candidate = await Candidate.create({
             name,
@@ -93,7 +105,7 @@ export const getCandidateById = async (req: Request, res: Response): Promise<voi
 export const updateCandidate = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { name, party, position, image } = req.body;
-        const userId = req.user?._id;
+        const userId = req.user?.id;
 
         const candidate = await Candidate.findById(req.params.id);
 
@@ -128,7 +140,7 @@ export const updateCandidate = async (req: AuthRequest, res: Response): Promise<
 export const deleteCandidate = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const candidate = await Candidate.findById(req.params.id);
-        const userId = req.user?._id;
+        const userId = req.user?.id;
 
         if (candidate) {
             await candidate.deleteOne();
@@ -152,4 +164,3 @@ export const deleteCandidate = async (req: AuthRequest, res: Response): Promise<
         res.status(500).json({ message: error instanceof Error ? error.message : 'Server Error' });
     }
 };
-

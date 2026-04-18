@@ -53,42 +53,38 @@ const DashboardPage: React.FC = () => {
                     </div>
                 </Card>
 
-                <Card title="Voting Status" className="relative overflow-hidden group">
+                <Card title="Election Status" className="relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        {user.hasVoted ? <CheckCircle size={100} className="text-green-500" /> : <XCircle size={100} className="text-yellow-500" />}
+                        <Shield size={100} className="text-purple-500" />
                     </div>
                     <div className="flex flex-col items-center justify-center h-full space-y-4 relative z-10">
-                        {user.hasVoted ? (
+                        {electionData?.isActive ? (
                             <>
-                                <div className="text-green-500 flex items-center space-x-2">
+                                <div className="text-emerald-400 flex items-center space-x-2">
                                     <CheckCircle size={32} />
-                                    <span className="text-2xl font-bold">Voted</span>
+                                    <span className="text-2xl font-bold">Election Live</span>
                                 </div>
                                 <p className="text-center text-gray-400">
-                                    Your vote has been recorded on the blockchain.
+                                    {electionData?.electionName || 'Election'} is currently active.
+                                    View all elections to cast your vote or check results.
                                 </p>
-                                <Link to="/results" className="w-full">
-                                    <Button variant="secondary" className="w-full">View Results</Button>
-                                </Link>
                             </>
                         ) : (
                             <>
                                 <div className="text-yellow-500 flex items-center space-x-2">
-                                    <Shield size={32} />
-                                    <span className="text-2xl font-bold">Not Voted</span>
+                                    <XCircle size={32} />
+                                    <span className="text-2xl font-bold">No Active Election</span>
                                 </div>
                                 <p className="text-center text-gray-400">
-                                    {electionData?.isActive 
-                                        ? `${electionData?.electionName || 'Election'} is live. Cast your vote securely now.` 
-                                        : 'Voting is currently closed.'}
+                                    Voting is currently closed. View past election results below.
                                 </p>
-                                {electionData?.isActive && (
-                                    <Link to="/vote" className="w-full">
-                                        <Button className="w-full">Vote Now</Button>
-                                    </Link>
-                                )}
                             </>
                         )}
+                        <Link to="/elections" className="w-full">
+                            <Button variant="primary" className="w-full">
+                                {electionData?.isActive ? 'Vote Election' : 'View Elections'}
+                            </Button>
+                        </Link>
                     </div>
                 </Card>
 

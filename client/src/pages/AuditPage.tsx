@@ -30,6 +30,7 @@ interface AuditLogEntry {
 const AuditPage: React.FC = () => {
     const { user } = useAuth();
     const token = user?.token;
+    const isAdmin = Boolean(user?.isAdmin);
     const [chain, setChain] = useState<Block[]>([]);
     const [dbLogs, setDbLogs] = useState<AuditLogEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -38,19 +39,32 @@ const AuditPage: React.FC = () => {
 
     useEffect(() => {
         const fetchAuditData = async () => {
-            if (!token) return;
             try {
-                const response = await fetch(`${API_URL}/api/audit`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`
+                if (isAdmin && token) {
+                    const auditResponse = await fetch(`${API_URL}/api/audit`, {
+                        headers: {
+                            Authorization: `Bearer ${token}`
+                        }
+                    });
+
+                    if (!auditResponse.ok) {
+                        throw new Error(`Audit fetch failed: ${auditResponse.status}`);
                     }
-                });
-                if (!response.ok) {
-                    throw new Error(`Audit fetch failed: ${response.status}`);
+
+                    const auditData = await auditResponse.json();
+                    setChain(auditData.blockchainLogs || []);
+                    setDbLogs(auditData.databaseLogs || []);
+                } else {
+                    const chainResponse = await fetch(`${API_URL}/api/vote/chain`);
+                    if (!chainResponse.ok) {
+                        throw new Error(`Blockchain fetch failed: ${chainResponse.status}`);
+                    }
+
+                    const chainData = await chainResponse.json();
+                    setChain(chainData);
+                    setDbLogs([]);
+                    setViewMode('blockchain');
                 }
-                const data = await response.json();
-                setChain(data.blockchainLogs);
-                setDbLogs(data.databaseLogs);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Error fetching audit logs');
             } finally {
@@ -59,7 +73,7 @@ const AuditPage: React.FC = () => {
         };
 
         fetchAuditData();
-    }, [token]);
+    }, [isAdmin, token]);
 
     const formatTimestamp = (timestamp: number) => {
         return new Date(timestamp).toLocaleString();
@@ -83,12 +97,14 @@ const AuditPage: React.FC = () => {
                         >
                             <Hash size={16} /> Blockchain
                         </button>
-                        <button
-                            onClick={() => setViewMode('database')}
-                            className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${viewMode === 'database' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
-                        >
-                            <List size={16} /> Database
-                        </button>
+                        {isAdmin && (
+                            <button
+                                onClick={() => setViewMode('database')}
+                                className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${viewMode === 'database' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                            >
+                                <List size={16} /> Database
+                            </button>
+                        )}
                     </div>
 
                     <div className="bg-gray-900/80 border border-gray-700 px-4 py-2 rounded-lg flex items-center gap-3">
@@ -109,7 +125,7 @@ const AuditPage: React.FC = () => {
                     <p className="font-bold text-lg mb-2">Connection Error</p>
                     <p>{error}</p>
                 </div>
-            ) : viewMode === 'blockchain' ? (
+            ) : viewMode === 'blockchain' || !isAdmin ? (
                 <div className="space-y-6 max-w-4xl mx-auto">
                     {chain.map((block, i) => (
                         <div key={block.hash} className="relative">

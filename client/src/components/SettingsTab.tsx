@@ -16,6 +16,7 @@ const SettingsTab: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
+    const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
     useEffect(() => {
         fetchSettings();
@@ -44,6 +45,14 @@ const SettingsTab: React.FC = () => {
         e.preventDefault();
         setSaving(true);
         setMessage('');
+
+        if (settings.startDate && settings.endDate && settings.startDate > settings.endDate) {
+            setMessageType('error');
+            setMessage('End date must be after start date.');
+            setSaving(false);
+            return;
+        }
+
         try {
             const res = await fetch(`${API_URL}/api/settings`, {
                 method: 'PUT',
@@ -54,11 +63,22 @@ const SettingsTab: React.FC = () => {
                 body: JSON.stringify(settings)
             });
             if (res.ok) {
+                const data = await res.json();
+                setSettings({
+                    electionName: data.electionName || '',
+                    startDate: data.startDate ? data.startDate.split('T')[0] : '',
+                    endDate: data.endDate ? data.endDate.split('T')[0] : '',
+                    isActive: data.isActive
+                });
+                setMessageType('success');
                 setMessage('Settings updated successfully!');
             } else {
-                setMessage(`Failed to update settings: ${res.status}`);
+                const data = await res.json().catch(() => null);
+                setMessageType('error');
+                setMessage(data?.message || `Failed to update settings: ${res.status}`);
             }
         } catch (err) {
+            setMessageType('error');
             setMessage('Error connecting to server.');
         } finally {
             setSaving(false);
@@ -71,7 +91,11 @@ const SettingsTab: React.FC = () => {
     return (
         <Card>
             <h2 className="text-xl font-bold mb-6 border-b border-gray-700 pb-2">Election Settings</h2>
-            {message && <div className="bg-green-500/10 text-green-500 p-3 rounded mb-4">{message}</div>}
+            {message && (
+                <div className={`${messageType === 'success' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-400'} p-3 rounded mb-4`}>
+                    {message}
+                </div>
+            )}
             
             <form onSubmit={handleSave} className="space-y-4 max-w-lg">
                 <div>
@@ -117,6 +141,10 @@ const SettingsTab: React.FC = () => {
                         {settings.isActive ? '(Users can cast votes)' : '(Voting is disabled)'}
                     </span>
                 </div>
+
+                <p className="text-sm text-gray-500">
+                    Reopening a closed election continues the same election. Starting a new election after results have been declared resets current vote counts and current-election vote status, while preserved election history remains available in the elections list.
+                </p>
 
                 <Button type="submit" disabled={saving}>
                     {saving ? 'Saving...' : 'Save Settings'}

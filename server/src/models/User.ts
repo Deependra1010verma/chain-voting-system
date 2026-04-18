@@ -5,6 +5,7 @@ export interface IUser extends Document {
     email: string;
     passwordHash: string;
     hasVoted: boolean;
+    votedElections: string[];
     isAdmin: boolean;
 }
 
@@ -26,6 +27,10 @@ const UserSchema: Schema = new Schema({
     hasVoted: {
         type: Boolean,
         default: false
+    },
+    votedElections: {
+        type: [String],
+        default: []
     },
     isAdmin: {
         type: Boolean,

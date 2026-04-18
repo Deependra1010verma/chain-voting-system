@@ -24,16 +24,22 @@ const Navbar: React.FC = () => {
                             ChainVote
                         </Link>
                         <div className="hidden md:flex ml-10 items-center space-x-4">
-                            <Link to="/dashboard" className={`${isActive('/dashboard')} px-3 py-2 rounded-md transition-colors`}>Dashboard</Link>
-                            <Link to="/vote" className={`${isActive('/vote')} px-3 py-2 rounded-md transition-colors`}>Vote</Link>
-                            <Link to="/results" className={`${isActive('/results')} px-3 py-2 rounded-md transition-colors`}>Results</Link>
-                            <Link to="/transparency" className={`${isActive('/transparency')} px-3 py-2 rounded-md transition-colors font-medium flex items-center gap-1`}>
-                                Transparency
-                            </Link>
-                            <Link to="/audit" className={`${isActive('/audit')} px-3 py-2 rounded-md transition-colors`}>Audit Chain</Link>
-                            {user?.isAdmin && (
-                                <Link to="/admin" className={`${isActive('/admin')} px-3 py-2 rounded-md transition-colors font-medium`}>
-                                    Admin
+                            {user ? (
+                                <>
+                                    <Link to="/dashboard" className={`${isActive('/dashboard')} px-3 py-2 rounded-md transition-colors`}>Dashboard</Link>
+                                    <Link to="/elections" className={`${isActive('/elections')} px-3 py-2 rounded-md transition-colors`}>Elections</Link>
+                                    <Link to="/vote" className={`${isActive('/vote')} px-3 py-2 rounded-md transition-colors`}>Vote</Link>
+                                    <Link to="/results" className={`${isActive('/results')} px-3 py-2 rounded-md transition-colors`}>Results</Link>
+                                    <Link to="/audit" className={`${isActive('/audit')} px-3 py-2 rounded-md transition-colors`}>Audit Chain</Link>
+                                    {user.isAdmin && (
+                                        <Link to="/admin" className={`${isActive('/admin')} px-3 py-2 rounded-md transition-colors font-medium`}>
+                                            Admin
+                                        </Link>
+                                    )}
+                                </>
+                            ) : (
+                                <Link to="/transparency" className={`${isActive('/transparency')} px-3 py-2 rounded-md transition-colors font-medium flex items-center gap-1`}>
+                                    Transparency
                                 </Link>
                             )}
                         </div>

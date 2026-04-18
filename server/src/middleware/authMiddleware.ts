@@ -14,8 +14,10 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
             req.user = decoded;
             next();
+            return;
         } catch (error) {
             res.status(401).json({ message: 'Not authorized, token failed' });
+            return;
         }
     }
 
