@@ -57,6 +57,7 @@ import settingsRoutes from './routes/settingsRoutes';
 import auditRoutes from './routes/auditRoutes';
 import publicRoutes from './routes/publicRoutes';
 import electionRoutes from './routes/electionRoutes';
+import userRoutes from './routes/userRoutes';
 import { blockchain } from './blockchainInstance';
 
 app.use('/api/auth', authRoutes);
@@ -66,6 +67,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/elections', electionRoutes);
+app.use('/api/users', userRoutes);
 
 // Start Server locally
 if (process.env.NODE_ENV !== 'production') {

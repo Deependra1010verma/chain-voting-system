@@ -50,6 +50,10 @@ const DashboardPage: React.FC = () => {
                         </p>
                         <p className="text-gray-400 text-sm mt-4">Email</p>
                         <p>{user.email}</p>
+                        <p className="text-gray-400 text-sm mt-4">Verification</p>
+                        <p className={user.isVerified ? 'text-green-400 font-semibold' : 'text-yellow-400 font-semibold'}>
+                            {user.isVerified ? 'Verified by admin' : 'Pending admin approval'}
+                        </p>
                     </div>
                 </Card>
 

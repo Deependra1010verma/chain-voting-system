@@ -46,6 +46,11 @@ const VotePage: React.FC = () => {
                 return;
             }
 
+            if (!user.isVerified) {
+                setIsFetching(false);
+                return;
+            }
+
             try {
                 const response = await fetch(`${API_URL}/api/elections`, {
                     headers: {
@@ -97,6 +102,19 @@ const VotePage: React.FC = () => {
             <div className="text-center mt-20 space-y-4">
                 <p className="text-red-400">{error}</p>
                 <Button onClick={() => navigate('/elections')}>Back to Elections</Button>
+            </div>
+        );
+    }
+
+    if (!user.isVerified) {
+        return (
+            <div className="text-center mt-20 space-y-4">
+                <Shield size={64} className="mx-auto text-yellow-500" />
+                <h2 className="text-3xl font-bold">Voter Verification Pending</h2>
+                <p className="text-gray-400 max-w-xl mx-auto">
+                    An administrator must approve your voter account before you can cast a ballot.
+                </p>
+                <Button onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
             </div>
         );
     }

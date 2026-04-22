@@ -7,6 +7,9 @@ interface User {
     isAdmin: boolean;
     hasVoted: boolean;
     votedElections?: string[];
+    isVerified: boolean;
+    verificationStatus: 'pending' | 'verified';
+    verifiedAt?: string | null;
     token: string;
 }
 

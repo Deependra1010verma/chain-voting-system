@@ -65,6 +65,11 @@ export const castVote = async (req: AuthRequest, res: Response): Promise<void> =
             return;
         }
 
+        if (!user.isVerified) {
+            res.status(403).json({ message: 'Voter verification is pending approval.' });
+            return;
+        }
+
         const settings = await Settings.findOne();
         if (!settings || !settings.isActive) {
             res.status(400).json({ message: 'Voting is currently closed.' });

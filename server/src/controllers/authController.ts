@@ -11,6 +11,18 @@ const generateToken = (id: string, isAdmin: boolean) => {
     });
 };
 
+const serializeAuthUser = (user: IUser) => ({
+    _id: user._id.toString(),
+    username: user.username,
+    email: user.email,
+    isAdmin: user.isAdmin,
+    hasVoted: user.hasVoted,
+    votedElections: user.votedElections || [],
+    isVerified: user.isVerified,
+    verificationStatus: user.verificationStatus,
+    verifiedAt: user.verifiedAt || null,
+});
+
 export const registerUser = async (req: Request, res: Response): Promise<void> => {
     const { username, email, password } = req.body;
 
@@ -46,13 +58,8 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
             });
 
             res.status(201).json({
-                _id: user.id,
-                username: user.username,
-                email: user.email,
-                isAdmin: user.isAdmin,
-                hasVoted: user.hasVoted,
-                votedElections: user.votedElections || [],
-                token: generateToken(user.id, user.isAdmin),
+                ...serializeAuthUser(user),
+                token: generateToken(user._id.toString(), user.isAdmin),
             });
         } else {
             res.status(400).json({ message: 'Invalid user data' });
@@ -70,13 +77,8 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 
         if (user && (await bcrypt.compare(password, user.passwordHash))) {
             res.json({
-                _id: user.id,
-                username: user.username,
-                email: user.email,
-                isAdmin: user.isAdmin,
-                hasVoted: user.hasVoted,
-                votedElections: user.votedElections || [],
-                token: generateToken(user.id, user.isAdmin),
+                ...serializeAuthUser(user),
+                token: generateToken(user._id.toString(), user.isAdmin),
             });
         } else {
             res.status(401).json({ message: 'Invalid email or password' });

@@ -7,6 +7,10 @@ export interface IUser extends Document {
     hasVoted: boolean;
     votedElections: string[];
     isAdmin: boolean;
+    isVerified: boolean;
+    verificationStatus: 'pending' | 'verified';
+    verifiedAt?: Date | null;
+    verifiedBy?: mongoose.Types.ObjectId | null;
 }
 
 const UserSchema: Schema = new Schema({
@@ -35,6 +39,24 @@ const UserSchema: Schema = new Schema({
     isAdmin: {
         type: Boolean,
         default: false
+    },
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    verificationStatus: {
+        type: String,
+        enum: ['pending', 'verified'],
+        default: 'pending'
+    },
+    verifiedAt: {
+        type: Date,
+        default: null
+    },
+    verifiedBy: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
     }
 }, {
     timestamps: true

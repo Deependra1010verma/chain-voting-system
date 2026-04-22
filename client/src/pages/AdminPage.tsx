@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
-import { Trash2, Edit2, Plus, Users, Settings, BarChart2, Trophy, Crown, RotateCcw } from 'lucide-react';
+import { Trash2, Edit2, Plus, Users, Settings, BarChart2, Trophy, Crown, RotateCcw, BadgeCheck } from 'lucide-react';
 import SettingsTab from '../components/SettingsTab';
 import AnalyticsTab from '../components/AnalyticsTab';
 import API_URL from '../config';
@@ -24,12 +24,27 @@ interface DeclaredResult {
     winner: Candidate;
 }
 
+interface Voter {
+    _id: string;
+    username: string;
+    email: string;
+    isAdmin: boolean;
+    hasVoted: boolean;
+    votedElections: string[];
+    isVerified: boolean;
+    verificationStatus: 'pending' | 'verified';
+    verifiedAt?: string | null;
+}
+
 const AdminPage: React.FC = () => {
     const { user } = useAuth();
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
-    const [activeTab, setActiveTab] = useState<'settings' | 'candidates' | 'analytics' | 'results'>('settings');
+    const [activeTab, setActiveTab] = useState<'settings' | 'candidates' | 'voters' | 'analytics' | 'results'>('settings');
+    const [voters, setVoters] = useState<Voter[]>([]);
+    const [isVotersLoading, setIsVotersLoading] = useState(true);
+    const [voterMessage, setVoterMessage] = useState('');
 
     // Form State
     const [isEditing, setIsEditing] = useState(false);
@@ -71,10 +86,34 @@ const AdminPage: React.FC = () => {
         }
     };
 
+    const fetchVoters = async () => {
+        try {
+            const response = await fetch(`${API_URL}/api/users`, {
+                headers: {
+                    Authorization: `Bearer ${user?.token}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch voters');
+            }
+
+            const data = await response.json();
+            setVoters(data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load voters');
+        } finally {
+            setIsVotersLoading(false);
+        }
+    };
+
     useEffect(() => {
         fetchCandidates();
         fetchDeclaredResult();
-    }, []);
+        if (user?.token) {
+            fetchVoters();
+        }
+    }, [user?.token]);
 
     // If not admin, redirect
     if (!user || !user.isAdmin) {
@@ -145,6 +184,31 @@ const AdminPage: React.FC = () => {
             fetchCandidates();
         } catch (err) {
             alert(err instanceof Error ? err.message : 'Error saving candidate');
+        }
+    };
+
+    const handleVerifyVoter = async (voterId: string) => {
+        setVoterMessage('');
+
+        try {
+            const response = await fetch(`${API_URL}/api/users/${voterId}/verify`, {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${user.token}`,
+                },
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to verify voter');
+            }
+
+            setVoters((current) =>
+                current.map((voter) => (voter._id === voterId ? data.voter : voter))
+            );
+            setVoterMessage(data.message);
+        } catch (err) {
+            setVoterMessage(err instanceof Error ? err.message : 'Error verifying voter');
         }
     };
 
@@ -235,6 +299,12 @@ const AdminPage: React.FC = () => {
                     <BarChart2 size={18} /> Analytics &amp; Export
                 </button>
                 <button
+                    onClick={() => setActiveTab('voters')}
+                    className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'voters' ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+                >
+                    <BadgeCheck size={18} /> Voter Approval
+                </button>
+                <button
                     onClick={() => setActiveTab('results')}
                     className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'results' ? 'border-yellow-500 text-yellow-500 bg-yellow-500/5' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
                 >
@@ -244,6 +314,72 @@ const AdminPage: React.FC = () => {
 
             {activeTab === 'settings' && <SettingsTab />}
             {activeTab === 'analytics' && <AnalyticsTab />}
+
+            {activeTab === 'voters' && (
+                <Card>
+                    <div className="flex items-center justify-between mb-6 border-b border-gray-700 pb-4">
+                        <div>
+                            <h2 className="text-xl font-bold flex items-center gap-2">
+                                <BadgeCheck size={20} className="text-emerald-400" />
+                                Voter Verification Queue
+                            </h2>
+                            <p className="text-sm text-gray-400 mt-1">
+                                Approve registered users before they are allowed to vote.
+                            </p>
+                        </div>
+                        <span className="text-sm text-gray-500">
+                            {voters.filter((voter) => !voter.isVerified && !voter.isAdmin).length} pending
+                        </span>
+                    </div>
+
+                    {voterMessage && (
+                        <div className={`mb-4 rounded-lg border p-3 text-sm ${voterMessage.toLowerCase().includes('success') ? 'border-green-500/20 bg-green-500/10 text-green-400' : 'border-blue-500/20 bg-blue-500/10 text-blue-300'}`}>
+                            {voterMessage}
+                        </div>
+                    )}
+
+                    {isVotersLoading ? (
+                        <div className="text-center py-8 text-gray-400">Loading voters...</div>
+                    ) : (
+                        <div className="space-y-4">
+                            {voters.filter((voter) => !voter.isAdmin).map((voter) => (
+                                <div
+                                    key={voter._id}
+                                    className="flex flex-col gap-4 rounded-xl border border-gray-800 bg-gray-900/50 p-4 md:flex-row md:items-center md:justify-between"
+                                >
+                                    <div>
+                                        <h3 className="font-semibold text-white">{voter.username}</h3>
+                                        <p className="text-sm text-gray-400">{voter.email}</p>
+                                        <p className="mt-2 text-xs text-gray-500">
+                                            Votes cast: {voter.votedElections?.length || 0}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex flex-col items-start gap-3 md:items-end">
+                                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${voter.isVerified ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
+                                            {voter.isVerified ? 'Verified' : 'Pending approval'}
+                                        </span>
+                                        {voter.isVerified ? (
+                                            <p className="text-xs text-gray-500">
+                                                Verified {voter.verifiedAt ? new Date(voter.verifiedAt).toLocaleString() : 'recently'}
+                                            </p>
+                                        ) : (
+                                            <Button
+                                                type="button"
+                                                onClick={() => handleVerifyVoter(voter._id)}
+                                                className="flex items-center gap-2"
+                                            >
+                                                <BadgeCheck size={16} />
+                                                Approve Voter
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Card>
+            )}
 
             {/* ─── CANDIDATES TAB ─── */}
             {activeTab === 'candidates' && (
